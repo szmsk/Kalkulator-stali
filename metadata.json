@@ -1,0 +1,6 @@
+{
+  "name": "Kalkulator Wag Stali",
+  "description": "Kalkulator wag wyrobów stalowych (blacha, ceownik g/w, dwuteownik) z automatycznym eksportem do PDF/Excel oraz inteligentną analizą rysunków i specyfikacji przez AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

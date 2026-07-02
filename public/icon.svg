@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Metallic gradients for the steel H-beam -->
+    <linearGradient id="frontFaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b0bec5" />
+      <stop offset="50%" stop-color="#78909c" />
+      <stop offset="100%" stop-color="#455a64" />
+    </linearGradient>
+
+    <linearGradient id="extrusionGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#546e7a" />
+      <stop offset="50%" stop-color="#37474f" />
+      <stop offset="100%" stop-color="#263238" />
+    </linearGradient>
+
+    <linearGradient id="topSurfaceGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#cfd8dc" />
+      <stop offset="100%" stop-color="#eceff1" />
+    </linearGradient>
+
+    <linearGradient id="innerShadowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.8" />
+      <stop offset="15%" stop-color="#1e293b" stop-opacity="0.3" />
+      <stop offset="85%" stop-color="#1e293b" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.8" />
+    </linearGradient>
+
+    <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.25" />
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.15" />
+    </filter>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- 3D H-Beam with shadow -->
+  <g filter="url(#dropShadow)">
+    <!-- 1. Extruded Depth Parts (Back/Side faces) -->
+    <!-- Top Flange Right Extrusion Face -->
+    <path d="M 390,100 L 425,75 L 425,105 L 390,130 Z" fill="url(#extrusionGrad)" />
+    <!-- Web Right Extrusion Face -->
+    <path d="M 290,130 L 325,105 L 325,345 L 290,370 Z" fill="url(#extrusionGrad)" />
+    <!-- Bottom Flange Right Extrusion Face -->
+    <path d="M 390,370 L 425,345 L 425,375 L 390,400 Z" fill="url(#extrusionGrad)" />
+
+    <!-- Top Flange Top Extrusion Surface -->
+    <path d="M 130,100 L 165,75 L 425,75 L 390,100 Z" fill="url(#topSurfaceGrad)" />
+    <!-- Bottom Flange Inner Right Top Extrusion Surface -->
+    <path d="M 290,370 L 325,345 L 425,345 L 390,370 Z" fill="url(#topSurfaceGrad)" />
+    <!-- Top Flange Inner Left Bottom Extrusion Surface -->
+    <path d="M 130,130 L 165,105 L 230,105 L 195,130 Z" fill="url(#extrusionGrad)" opacity="0.6" />
+    <!-- Top Flange Inner Right Bottom Extrusion Surface -->
+    <path d="M 290,130 L 325,105 L 425,105 L 390,130 Z" fill="url(#extrusionGrad)" opacity="0.6" />
+
+    <!-- 2. Front 2D Profile Face of the I-Beam -->
+    <!-- We draw the complete classic I-Beam shape -->
+    <path d="M 130,100 
+             L 390,100 
+             L 390,130 
+             L 290,130 
+             L 290,370 
+             L 390,370 
+             L 390,400 
+             L 130,400 
+             L 130,370 
+             L 230,370 
+             L 230,130 
+             L 130,130 
+             Z" 
+          fill="url(#frontFaceGrad)" 
+          stroke="#eceff1" 
+          stroke-width="2.5" 
+          stroke-linejoin="round" />
+
+    <!-- Inner Shadow/Depth inside the Web recess -->
+    <rect x="230" y="130" width="60" height="240" fill="url(#innerShadowGrad)" pointer-events="none" />
+
+    <!-- 3. Calculator Elements inside the Web Front Face (X is 230 to 290, width 60) -->
+    <!-- Plus Sign (+) -->
+    <g transform="translate(260, 185)">
+      <!-- Horizontal bar -->
+      <rect x="-18" y="-5" width="36" height="10" rx="3" fill="#ffffff" filter="url(#glow)" />
+      <!-- Vertical bar -->
+      <rect x="-5" y="-18" width="10" height="36" rx="3" fill="#ffffff" filter="url(#glow)" />
+    </g>
+
+    <!-- Equal Sign (=) -->
+    <g transform="translate(260, 245)">
+      <rect x="-18" y="-10" width="36" height="8" rx="2.5" fill="#ffffff" filter="url(#glow)" />
+      <rect x="-18" y="4" width="36" height="8" rx="2.5" fill="#ffffff" filter="url(#glow)" />
+    </g>
+
+    <!-- Calculator Buttons Grid at the bottom (Y from 290 to 360) -->
+    <!-- Button Row 1 (7, 8, 9) -->
+    <g transform="translate(230, 295)">
+      <!-- Key 7 -->
+      <rect x="4" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="11" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">7</text>
+      
+      <!-- Key 8 -->
+      <rect x="23" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="30" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">8</text>
+      
+      <!-- Key 9 -->
+      <rect x="42" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="49" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">9</text>
+    </g>
+
+    <!-- Button Row 2 (4, 5, 6) -->
+    <g transform="translate(230, 317)">
+      <!-- Key 4 -->
+      <rect x="4" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="11" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">4</text>
+      
+      <!-- Key 5 -->
+      <rect x="23" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="30" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">5</text>
+      
+      <!-- Key 6 -->
+      <rect x="42" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="49" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">6</text>
+    </g>
+
+    <!-- Button Row 3 (1, 2, 3) -->
+    <g transform="translate(230, 339)">
+      <!-- Key 1 -->
+      <rect x="4" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="11" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">1</text>
+      
+      <!-- Key 2 -->
+      <rect x="23" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="30" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">2</text>
+      
+      <!-- Key 3 -->
+      <rect x="42" y="0" width="14" height="14" rx="2.5" fill="#ffffff" opacity="0.9" />
+      <text x="49" y="11" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#37474f" text-anchor="middle">3</text>
+    </g>
+  </g>
+
+  <!-- Elegant text banner underneath the 3D Beam, matching the theme -->
+  <text x="260" y="455" 
+        font-family="system-ui, sans-serif" 
+        font-weight="800" 
+        font-size="28" 
+        letter-spacing="2" 
+        fill="#37474f" 
+        text-anchor="middle"
+        filter="url(#glow)">KALKULATOR STALI</text>
+</svg>
