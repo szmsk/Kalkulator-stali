@@ -16,6 +16,9 @@ function stripDiacritics(str: string): string {
  * Exports calculation items to Excel
  */
 export function exportToExcel(items: CalculationItem[], totalWeight: number): void {
+  const totalSheetsPieces = items.filter(item => item.type === 'BLACHA').reduce((sum, item) => sum + item.quantity, 0);
+  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + item.length, 0);
+
   const data = items.map((item, index) => {
     const dimensionsStr = item.type === 'BLACHA'
       ? `Grubość: ${item.h} mm, Szerokość: ${item.width} mm, Długość: ${Math.round(item.length * 1000)} mm`
@@ -27,11 +30,11 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
 
     return {
       'Lp.': index + 1,
-      'Typ elementu': item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : 'Dwuteownik',
+      'Typ elementu': item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : 'Profil zamknięty',
       'Profil': item.isStandard ? (item.profileName || 'Standardowy') : 'Niestandardowy (Geom.)',
       'Wymiary podstawowe': dimensionsStr,
       'Grubości ścianek': wallThicknessStr,
-      'Ilość (szt.)': item.quantity,
+      'Ilość': item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.length} m`,
       'Masa jedn. (kg)': item.calculatedWeightPerUnit,
       'Masa całkowita (kg)': item.calculatedWeightTotal,
       'Uwagi': item.notes || ''
@@ -39,13 +42,18 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
   });
 
   // Add a summary row
+  const summaryQtyStr = [
+    totalSheetsPieces > 0 ? `${totalSheetsPieces} szt. blach` : '',
+    totalProfilesLength > 0 ? `${totalProfilesLength.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} m profili` : ''
+  ].filter(Boolean).join(', ');
+
   data.push({
     'Lp.': null as any,
     'Typ elementu': 'SUMA',
     'Profil': '',
     'Wymiary podstawowe': '',
     'Grubości ścianek': '',
-    'Ilość (szt.)': items.reduce((acc, curr) => acc + curr.quantity, 0),
+    'Ilość': summaryQtyStr as any,
     'Masa jedn. (kg)': null as any,
     'Masa całkowita (kg)': totalWeight,
     'Uwagi': ''
@@ -56,7 +64,7 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Kalkulacja Stali');
 
   // Adjust column widths
-  const max_vals = [5, 15, 25, 50, 25, 12, 15, 18, 20];
+  const max_vals = [5, 15, 25, 50, 25, 25, 15, 18, 20];
   worksheet['!cols'] = max_vals.map(w => ({ wch: w }));
 
   XLSX.writeFile(workbook, `Kalkulacja_Wag_Stali_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -73,7 +81,8 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
   });
 
   const dateStr = new Date().toLocaleString('pl-PL');
-  const totalQty = items.reduce((acc, curr) => acc + curr.quantity, 0);
+  const totalSheetsPieces = items.filter(item => item.type === 'BLACHA').reduce((sum, item) => sum + item.quantity, 0);
+  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + item.length, 0);
 
   // Document Title & Header
   doc.setFillColor(30, 41, 59); // Slate-800
@@ -92,13 +101,13 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
 
   // Summary widgets on the right side of header
   doc.setFillColor(249, 115, 22); // Orange-500
-  doc.rect(200, 8, 82, 24, 'F');
+  doc.rect(190, 8, 92, 24, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(12);
-  doc.text(stripDiacritics('SUMA CAŁKOWITA:'), 204, 15);
+  doc.text(stripDiacritics('SUMA CAŁKOWITA:'), 194, 15);
   doc.setFontSize(18);
-  doc.text(`${totalWeight.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} kg`, 204, 26);
+  doc.text(`${totalWeight.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} kg`, 194, 26);
 
   // Table columns definition
   const tableHeaders = [
@@ -107,18 +116,54 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     'Profil / Spec.',
     'Wymiary (H x Szer x Dl)',
     'Gr. Scianek (tw / tf)',
-    'Ilosc',
+    'Ilosc / Dlugosc',
     'Waga jedn.',
     'Waga laczna'
   ];
 
   const tableRows = items.map((item, index) => {
-    const typeLabel = item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : 'Dwuteownik';
-    const profileLabel = item.isStandard ? (item.profileName || 'Standard') : 'Niestandardowy';
-    const dimLabel = item.type === 'BLACHA'
-      ? `${item.h} x ${item.width} x ${Math.round(item.length * 1000)} mm`
-      : `${item.h} x ${item.width} mm x ${item.length} m`;
-    const thickLabel = item.type !== 'BLACHA' ? `${item.webThickness || '-'} / ${item.flangeThickness || '-'} mm` : '-';
+    // Determine the type label
+    const typeLabel = item.type === 'BLACHA' ? 'Blacha' : 
+                      item.type === 'CEOWNIK' ? 'Ceownik g/w' : 
+                      item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : 
+                      item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły' : 
+                      item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : 
+                      item.type === 'PRET_PLASKI' ? 'Pręt płaski' : 
+                      'Profil zamknięty';
+
+    // Determine profile specification label
+    let profileLabel = '';
+    if (item.type === 'PRET_OKRAGLY') {
+      profileLabel = `Srednica: fi ${item.h} mm`;
+    } else if (item.type === 'PRET_KWADRATOWY') {
+      profileLabel = `Bok: ${item.h}x${item.h} mm`;
+    } else if (item.type === 'PRET_PLASKI') {
+      profileLabel = `Szerokosc: ${item.width} mm`;
+    } else if (item.type === 'PROFIL_ZAMKNIETY') {
+      profileLabel = `${item.h}x${item.width} mm`;
+    } else {
+      profileLabel = item.isStandard ? (item.profileName || 'Standard') : 'Niestandardowy';
+    }
+
+    // Determine dimensions label
+    let dimLabel = '';
+    if (item.type === 'BLACHA') {
+      dimLabel = `${item.h} x ${item.width} x ${Math.round(item.length * 1000)} mm`;
+    } else if (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY') {
+      dimLabel = `Dlugosc: ${item.length.toFixed(2)} m`;
+    } else if (item.type === 'PRET_PLASKI') {
+      dimLabel = `Grubosc: ${item.h} mm, Dl: ${item.length.toFixed(2)} m`;
+    } else {
+      dimLabel = `${item.h} x ${item.width} mm x ${item.length.toFixed(2)} m`;
+    }
+
+    // Determine thickness label
+    let thickLabel = '-';
+    if (item.type === 'PROFIL_ZAMKNIETY') {
+      thickLabel = `Scianka: ${item.webThickness || 2} mm`;
+    } else if (item.type !== 'BLACHA' && item.type !== 'PRET_OKRAGLY' && item.type !== 'PRET_KWADRATOWY' && item.type !== 'PRET_PLASKI') {
+      thickLabel = `${item.webThickness || '-'} / ${item.flangeThickness || '-'} mm`;
+    }
     
     return [
       (index + 1).toString(),
@@ -126,11 +171,16 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
       stripDiacritics(profileLabel),
       stripDiacritics(dimLabel),
       stripDiacritics(thickLabel),
-      `${item.quantity} szt.`,
+      item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.length.toFixed(2)} m`,
       `${item.calculatedWeightPerUnit.toFixed(2)} kg`,
       `${item.calculatedWeightTotal.toFixed(2)} kg`
     ];
   });
+
+  const summaryQtyStr = [
+    totalSheetsPieces > 0 ? `${totalSheetsPieces} szt.` : '',
+    totalProfilesLength > 0 ? `${totalProfilesLength.toFixed(1)} m` : ''
+  ].filter(Boolean).join(' / ');
 
   // Add the totals row to the table
   tableRows.push([
@@ -139,7 +189,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     '',
     '',
     '',
-    `${totalQty} szt.`,
+    summaryQtyStr,
     '',
     `${totalWeight.toFixed(2)} kg`
   ]);

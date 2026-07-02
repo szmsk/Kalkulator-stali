@@ -40,7 +40,8 @@ export default function CalculationList({
 
   const totalWeight = items.reduce((sum, item) => sum + item.calculatedWeightTotal, 0);
   const totalWeightTonnes = totalWeight / 1000;
-  const totalPieces = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalSheetsPieces = items.filter(item => item.type === 'BLACHA').reduce((sum, item) => sum + item.quantity, 0);
+  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + item.length, 0);
 
   const handleExportExcel = () => {
     if (items.length === 0) return;
@@ -169,7 +170,7 @@ export default function CalculationList({
     h: editH,
     width: (editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY') ? editH : editWidth,
     length: editType === 'BLACHA' ? editLength / 1000 : editLength,
-    quantity: editQuantity,
+    quantity: editType === 'BLACHA' ? editQuantity : 1,
     webThickness: editType === 'PROFIL_ZAMKNIETY' ? (editWebThickness !== '' ? Number(editWebThickness) : 2) : (editWebThickness === '' ? undefined : Number(editWebThickness)),
     flangeThickness: editFlangeThickness === '' ? undefined : Number(editFlangeThickness),
   });
@@ -206,7 +207,7 @@ export default function CalculationList({
       h: editH,
       width: (editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY') ? editH : editWidth,
       length: finalLength,
-      quantity: editQuantity,
+      quantity: editType === 'BLACHA' ? editQuantity : 1,
       webThickness: editType === 'PROFIL_ZAMKNIETY' ? (editWebThickness !== '' ? Number(editWebThickness) : 2) : (editType !== 'BLACHA' ? currentCalcEdit.webThickness : undefined),
       flangeThickness: (editType !== 'BLACHA' && editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && editType !== 'PRET_PLASKI' && editType !== 'PROFIL_ZAMKNIETY') ? currentCalcEdit.flangeThickness : undefined,
       calculatedWeightPerUnit: currentCalcEdit.unitWeight,
@@ -321,7 +322,7 @@ export default function CalculationList({
                         )}
                       </td>
                       <td className="px-3 py-3.5 text-right font-medium text-slate-800 whitespace-nowrap">
-                        {item.quantity} szt.
+                        {item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.length.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} m`}
                       </td>
                       <td className="px-3 py-3.5 text-right font-semibold text-slate-900 whitespace-nowrap">
                         {item.calculatedWeightTotal.toLocaleString('pl-PL', { minimumFractionDigits: 1 })} kg
@@ -368,10 +369,15 @@ export default function CalculationList({
             </div>
             
             <div className="text-right">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Łączna ilość</p>
-              <p className="font-display font-bold text-slate-800 text-lg leading-tight mt-1">
-                {totalPieces} <span className="text-sm font-medium text-slate-500">szt.</span>
-              </p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Ilość sumaryczna</p>
+              <div className="text-xs text-slate-600 mt-1 space-y-0.5 font-mono">
+                {totalSheetsPieces > 0 && (
+                  <div>Blachy: <span className="font-bold text-slate-800">{totalSheetsPieces} szt.</span></div>
+                )}
+                {totalProfilesLength > 0 && (
+                  <div>Materiały (M): <span className="font-bold text-slate-800">{totalProfilesLength.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} m</span></div>
+                )}
+              </div>
               <p className="text-[10px] text-slate-400 mt-1">
                 {items.length} pozycji asortymentowych
               </p>
@@ -675,7 +681,7 @@ export default function CalculationList({
 
               {/* Length & Quantity Inputs */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className={editType === 'BLACHA' ? '' : 'col-span-2'}>
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                     {editType === 'BLACHA' ? 'Długość (mm)' : 'Długość (m)'}
                   </label>
@@ -688,19 +694,21 @@ export default function CalculationList({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                    Ilość (szt.)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={editQuantity || ''}
-                    onChange={(e) => setEditQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-1 focus:ring-orange-500 focus:outline-none"
-                  />
-                </div>
+                {editType === 'BLACHA' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Ilość (szt.)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={editQuantity || ''}
+                      onChange={(e) => setEditQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Live Weight Info Section */}
@@ -730,7 +738,7 @@ export default function CalculationList({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!editH || !editWidth || !editLength || !editQuantity}
+                disabled={!editH || (editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && !editWidth) || !editLength || (editType === 'BLACHA' ? !editQuantity : false)}
                 className="px-4 py-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold cursor-pointer transition-colors"
               >
                 Zapisz zmiany

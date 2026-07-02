@@ -147,7 +147,7 @@ export default function App() {
     h,
     width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY') ? h : width,
     length: activeTab === 'BLACHA' ? length / 1000 : length,
-    quantity,
+    quantity: activeTab === 'BLACHA' ? quantity : 1,
     webThickness: activeTab === 'PROFIL_ZAMKNIETY' ? (webThickness !== '' ? Number(webThickness) : 2) : (webThickness === '' ? undefined : Number(webThickness)),
     flangeThickness: flangeThickness === '' ? undefined : Number(flangeThickness),
   });
@@ -194,7 +194,7 @@ export default function App() {
       h,
       width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY') ? h : width,
       length: activeTab === 'BLACHA' ? length / 1000 : length, // Store standard normalized in meters
-      quantity,
+      quantity: activeTab === 'BLACHA' ? quantity : 1,
       webThickness: activeTab === 'PROFIL_ZAMKNIETY' ? (webThickness !== '' ? Number(webThickness) : 2) : (activeTab !== 'BLACHA' ? currentCalc.webThickness : undefined),
       flangeThickness: (activeTab !== 'BLACHA' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && activeTab !== 'PROFIL_ZAMKNIETY') ? currentCalc.flangeThickness : undefined,
       calculatedWeightPerUnit: currentCalc.unitWeight,
@@ -276,7 +276,7 @@ export default function App() {
         h: finalH,
         width: (aiItem.detectedType === 'PRET_OKRAGLY' || aiItem.detectedType === 'PRET_KWADRATOWY') ? finalH : finalWidth,
         length: lengthInMeters,
-        quantity: aiItem.quantity || 1,
+        quantity: aiItem.detectedType === 'BLACHA' ? (aiItem.quantity || 1) : 1,
         webThickness: aiItem.detectedType === 'PROFIL_ZAMKNIETY' ? (aiItem.webThickness || 2) : matchedWebThick,
         flangeThickness: matchedFlangeThick
       });
@@ -308,12 +308,12 @@ export default function App() {
         h: finalH,
         width: (aiItem.detectedType === 'PRET_OKRAGLY' || aiItem.detectedType === 'PRET_KWADRATOWY') ? finalH : finalWidth,
         length: lengthInMeters,
-        quantity: aiItem.quantity || 1,
+        quantity: aiItem.detectedType === 'BLACHA' ? (aiItem.quantity || 1) : 1,
         webThickness: calc.webThickness || undefined,
         flangeThickness: calc.flangeThickness || undefined,
         calculatedWeightPerUnit: calc.unitWeight,
         calculatedWeightTotal: calc.totalWeight,
-        notes: notes + (aiItem.rawQuantityList ? ` (suma sztuk: ${aiItem.rawQuantityList})` : '')
+        notes: notes + (aiItem.rawQuantityList ? (aiItem.detectedType === 'BLACHA' ? ` (suma sztuk: ${aiItem.rawQuantityList})` : ` (suma dł: ${aiItem.rawQuantityList} m)`) : '')
       };
     });
 
@@ -786,7 +786,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-4">
                 
                 {/* INPUT: LENGTH */}
-                <div className="space-y-2">
+                <div className={`space-y-2 ${activeTab === 'BLACHA' ? '' : 'col-span-2'}`}>
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     {activeTab === 'BLACHA' ? 'Długość odcinka (mm)' : 'Długość odcinka (m)'}
                   </label>
@@ -801,20 +801,22 @@ export default function App() {
                 </div>
 
                 {/* INPUT: QUANTITY */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Ilość sztuk
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={quantity || ''}
-                    onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
-                    placeholder="1"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
-                  />
-                </div>
+                {activeTab === 'BLACHA' && (
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Ilość sztuk
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={quantity || ''}
+                      onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
+                      placeholder="1"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -855,7 +857,7 @@ export default function App() {
             
             <button
               onClick={handleAddItem}
-              disabled={!h || !width || !length || !quantity}
+              disabled={!h || (activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && !width) || !length || (activeTab === 'BLACHA' ? !quantity : false)}
               className="h-12 bg-orange-600 flex items-center justify-center cursor-pointer hover:bg-orange-500 transition-colors border-none text-white font-bold uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Dodaj do zestawienia zbiorczego
