@@ -23,7 +23,12 @@ export function calculateWeight(params: {
   let finalWebThickness = params.webThickness || 0;
   let finalFlangeThickness = params.flangeThickness || 0;
 
-  if (type === 'BLACHA') {
+  if (type === 'RURA') {
+    // Rura is not calculated automatically, weight remains 0
+    unitWeight = 0;
+    finalWebThickness = 0;
+    finalFlangeThickness = 0;
+  } else if (type === 'BLACHA') {
     // Blacha: H is thickness (mm), width is mm, length is m
     // Volume in dm^3 = (H / 10) * (width / 100) * (length * 10)
     // Weight = Volume * STEEL_DENSITY

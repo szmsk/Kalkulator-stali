@@ -181,6 +181,8 @@ export default function App() {
       specName = `Płaskownik ${h}x${width}mm`;
     } else if (activeTab === 'PROFIL_ZAMKNIETY') {
       specName = `Profil zamk. ${h}x${width}x${webThickness || 2}mm`;
+    } else if (activeTab === 'RURA') {
+      specName = `R fi ${h}`;
     } else {
       specName = `Geom. (${h}x${width}x${Math.round(length * 1000)}mm)`;
     }
@@ -192,11 +194,11 @@ export default function App() {
       profileSystem: isStandard ? profileSystem : undefined,
       profileName: isStandard ? selectedProfileName : undefined,
       h,
-      width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY') ? h : width,
+      width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'RURA') ? h : width,
       length: activeTab === 'BLACHA' ? length / 1000 : length, // Store standard normalized in meters
       quantity: quantity,
       webThickness: activeTab === 'PROFIL_ZAMKNIETY' ? (webThickness !== '' ? Number(webThickness) : 2) : (activeTab !== 'BLACHA' ? currentCalc.webThickness : undefined),
-      flangeThickness: (activeTab !== 'BLACHA' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && activeTab !== 'PROFIL_ZAMKNIETY') ? currentCalc.flangeThickness : undefined,
+      flangeThickness: (activeTab !== 'BLACHA' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && activeTab !== 'PROFIL_ZAMKNIETY' && activeTab !== 'RURA') ? currentCalc.flangeThickness : undefined,
       calculatedWeightPerUnit: currentCalc.unitWeight,
       calculatedWeightTotal: currentCalc.totalWeight,
       notes: activeTab === 'BLACHA' 
@@ -239,6 +241,7 @@ export default function App() {
     if (t === 'PRET_KWADRATOWY') return 'Pręt kwadratowy';
     if (t === 'PRET_PLASKI') return 'Pręt płaski / Płaskownik';
     if (t === 'PROFIL_ZAMKNIETY') return 'Profil zamknięty';
+    if (t === 'RURA') return 'Rura';
     return t;
   };
 
@@ -274,7 +277,7 @@ export default function App() {
         isStandard: aiItem.isStandard,
         profileName: finalProfileName || undefined,
         h: finalH,
-        width: (aiItem.detectedType === 'PRET_OKRAGLY' || aiItem.detectedType === 'PRET_KWADRATOWY') ? finalH : finalWidth,
+        width: (aiItem.detectedType === 'PRET_OKRAGLY' || aiItem.detectedType === 'PRET_KWADRATOWY' || aiItem.detectedType === 'RURA') ? finalH : finalWidth,
         length: lengthInMeters,
         quantity: aiItem.quantity || 1,
         webThickness: aiItem.detectedType === 'PROFIL_ZAMKNIETY' ? (aiItem.webThickness || 2) : matchedWebThick,
@@ -285,15 +288,17 @@ export default function App() {
         ? finalProfileName
         : aiItem.detectedType === 'BLACHA'
           ? `Blacha ${finalH}x${finalWidth}x${Math.round(lengthInMeters * 1000)}mm`
-          : aiItem.detectedType === 'PRET_OKRAGLY'
-            ? `Pręt okr. Ø${finalH}mm`
-            : aiItem.detectedType === 'PRET_KWADRATOWY'
-              ? `Pręt kw. ■${finalH}mm`
-              : aiItem.detectedType === 'PRET_PLASKI'
-                ? `Płaskownik ${finalH}x${finalWidth}mm`
-                : aiItem.detectedType === 'PROFIL_ZAMKNIETY'
-                  ? `Profil zamk. ${finalH}x${finalWidth}x${aiItem.webThickness || 2}mm`
-                  : `Geom. (${finalH}x${finalWidth}x${Math.round(lengthInMeters * 1000)}mm)`;
+          : aiItem.detectedType === 'RURA'
+            ? `R fi ${finalH}`
+            : aiItem.detectedType === 'PRET_OKRAGLY'
+              ? `Pręt okr. Ø${finalH}mm`
+              : aiItem.detectedType === 'PRET_KWADRATOWY'
+                ? `Pręt kw. ■${finalH}mm`
+                : aiItem.detectedType === 'PRET_PLASKI'
+                  ? `Płaskownik ${finalH}x${finalWidth}mm`
+                  : aiItem.detectedType === 'PROFIL_ZAMKNIETY'
+                    ? `Profil zamk. ${finalH}x${finalWidth}x${aiItem.webThickness || 2}mm`
+                    : `Geom. (${finalH}x${finalWidth}x${Math.round(lengthInMeters * 1000)}mm)`;
 
       const notes = aiItem.detectedType === 'BLACHA'
         ? `Grubość: ${finalH} mm`
@@ -306,7 +311,7 @@ export default function App() {
         profileSystem: aiItem.isStandard && finalProfileName ? findStandardProfile(finalProfileName)?.system : undefined,
         profileName: aiItem.isStandard ? (finalProfileName || undefined) : undefined,
         h: finalH,
-        width: (aiItem.detectedType === 'PRET_OKRAGLY' || aiItem.detectedType === 'PRET_KWADRATOWY') ? finalH : finalWidth,
+        width: (aiItem.detectedType === 'PRET_OKRAGLY' || aiItem.detectedType === 'PRET_KWADRATOWY' || aiItem.detectedType === 'RURA') ? finalH : finalWidth,
         length: lengthInMeters,
         quantity: aiItem.quantity || 1,
         webThickness: calc.webThickness || undefined,
@@ -560,6 +565,26 @@ export default function App() {
                   activeTab === 'PROFIL_ZAMKNIETY' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>BOX</span>
               </button>
+
+              <button
+                onClick={() => {
+                  if (activeTab === 'BLACHA') {
+                    setLength(prev => prev / 1000);
+                  }
+                  setActiveTab('RURA');
+                  setIsStandard(false);
+                }}
+                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'RURA'
+                    ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                }`}
+              >
+                <span>Rura</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                  activeTab === 'RURA' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
+                }`}>R fi</span>
+              </button>
             </div>
           </div>
 
@@ -686,6 +711,7 @@ export default function App() {
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     {activeTab === 'BLACHA' ? 'Wymiar H - Grubość (mm)' : 
                      activeTab === 'PRET_OKRAGLY' ? 'Średnica Ø (mm)' :
+                     activeTab === 'RURA' ? 'Średnica Ø (mm)' :
                      activeTab === 'PRET_KWADRATOWY' ? 'Bok kwadratu a (mm)' :
                      activeTab === 'PRET_PLASKI' ? 'Wymiar H - Grubość (mm)' :
                      'Wymiar H - Wysokość (mm)'}
@@ -705,7 +731,7 @@ export default function App() {
                 </div>
 
                 {/* INPUT: WIDTH */}
-                {activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && (
+                {activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'RURA' && (
                   <div className="space-y-2">
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       {activeTab === 'BLACHA' ? 'Szerokość (mm)' : 
@@ -855,7 +881,7 @@ export default function App() {
             
             <button
               onClick={handleAddItem}
-              disabled={!h || (activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && !width) || !length || (activeTab === 'BLACHA' ? !quantity : false)}
+              disabled={!h || (activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'RURA' && !width) || !length || (activeTab === 'BLACHA' ? !quantity : false)}
               className="h-12 bg-orange-600 flex items-center justify-center cursor-pointer hover:bg-orange-500 transition-colors border-none text-white font-bold uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Dodaj do zestawienia zbiorczego

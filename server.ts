@@ -82,9 +82,9 @@ Zasady zapisu w zeszycie i rozpoznawania:
      🚨 BARDZO WAŻNE DLA BLACH: Każda z tych liczb oddzielonych przecinkiem to CAŁKOWICIE OSOBNA ilość sztuk (liczba całkowita), które należy zsumować. 
      NIGDY nie łącz ich w ułamki dziesiętne! Np. zapis "6,7,8,6,4" oznacza pięć osobnych ilości sztuk: 6, 7, 8, 6, 4. Suma to 6+7+8+6+4 = 31. Zwróć 31 jako quantity, a "6,7,8,6,4" jako rawQuantityList. Długość (length) to 3.0.
 
-2. Sposób zapisu linii dla kształtowników, prętów i profili (CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, PROFIL_ZAMKNIETY) - podawane w METRACH (M):
+2. Sposób zapisu linii dla kształtowników, prętów i profili (CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, PROFIL_ZAMKNIETY, RURA) - podawane w METRACH (M):
    🚨 BARDZO WAŻNE: Dla tych elementów, liczby po przecinku na końcu linii oznaczają długości poszczególnych odcinków w METRACH, a nie sztuki! Sumujemy tylko metry bieżące!
-   Przykład: "UNP 120 - 2,2,4" lub "IPE 160 - 6,6,12" lub "fi 16 - 3,3,4" lub "profil 40x40x3 - 6,12"
+   Przykład: "UNP 120 - 2,2,4" lub "IPE 160 - 6,6,12" lub "fi 16 - 3,3,4" lub "profil 40x40x3 - 6,12" lub "R fi 40 - 6,12"
    - Oznaczenie profilu np. "UNP 120", "IPE 160" (isStandard = true), "fi 16", "■14", "płaskownik 40x10", "profil 40x40x3" (isStandard = false).
    - Liczby po przecinku na końcu (np. "2,2,4" lub "6,6,12") to długości odcinków w METRACH. Należy je zsumować, aby otrzymać łączną długość (length).
      Na przykład: dla "UNP 120 - 2,2,4", odcinki mają długości 2m, 2m, 4m. Łączna długość w metrach (length) wynosi 2 + 2 + 4 = 8.0.
@@ -154,7 +154,7 @@ Wskazówki dodatkowe:
                         properties: {
                           detectedType: {
                             type: Type.STRING,
-                            description: "Musi być dokładnie: BLACHA, CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, lub PROFIL_ZAMKNIETY"
+                            description: "Musi być dokładnie: BLACHA, CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, PROFIL_ZAMKNIETY lub RURA"
                           },
                           h: {
                             type: Type.NUMBER,

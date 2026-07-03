@@ -409,6 +409,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                     if (t === 'PRET_KWADRATOWY') return 'Pręt kwadratowy';
                     if (t === 'PRET_PLASKI') return 'Pręt płaski / Płaskownik';
                     if (t === 'PROFIL_ZAMKNIETY') return 'Profil zamknięty';
+                    if (t === 'RURA') return 'Rura';
                     return t;
                   };
 
@@ -455,6 +456,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                               <option value="PRET_KWADRATOWY">Pręt kwadratowy</option>
                               <option value="PRET_PLASKI">Płaskownik</option>
                               <option value="PROFIL_ZAMKNIETY">Profil zamknięty</option>
+                              <option value="RURA">Rura</option>
                             </select>
                           </div>
 
@@ -495,7 +497,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                             <div>
                               <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
                                 {item.detectedType === 'BLACHA' ? 'Grubość (mm)' : 
-                                 item.detectedType === 'PRET_OKRAGLY' ? 'Średnica (mm)' : 
+                                 (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'RURA') ? 'Średnica (mm)' : 
                                  item.detectedType === 'PRET_PLASKI' ? 'Grubość (mm)' : 'Wysokość (mm)'}
                               </label>
                               <input

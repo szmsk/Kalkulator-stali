@@ -1,4 +1,4 @@
-export type ShapeType = 'BLACHA' | 'CEOWNIK' | 'DWUTEOWNIK' | 'PRET_OKRAGLY' | 'PRET_KWADRATOWY' | 'PRET_PLASKI' | 'PROFIL_ZAMKNIETY';
+export type ShapeType = 'BLACHA' | 'CEOWNIK' | 'DWUTEOWNIK' | 'PRET_OKRAGLY' | 'PRET_KWADRATOWY' | 'PRET_PLASKI' | 'PROFIL_ZAMKNIETY' | 'RURA';
 
 export type ProfileSystem = 'UNP' | 'UPE' | 'IPE' | 'IPN' | 'HEB' | 'HEA';
 

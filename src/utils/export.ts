@@ -22,16 +22,18 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
   const data = items.map((item, index) => {
     const dimensionsStr = item.type === 'BLACHA'
       ? `Grubość: ${item.h} mm, Szerokość: ${item.width} mm, Długość: ${Math.round(item.length * 1000)} mm`
-      : `${item.profileName || item.type} (H: ${item.h} mm, S: ${item.width} mm, L: ${item.length} m)`;
+      : item.type === 'RURA'
+        ? `Średnica: R fi ${item.h}, Długość: ${item.length} m`
+        : `${item.profileName || item.type} (H: ${item.h} mm, S: ${item.width} mm, L: ${item.length} m)`;
 
-    const wallThicknessStr = item.type !== 'BLACHA'
+    const wallThicknessStr = (item.type !== 'BLACHA' && item.type !== 'RURA')
       ? `Ścianka: ${item.webThickness || '-'} mm, Półka: ${item.flangeThickness || '-'} mm`
       : 'N/A';
 
     return {
       'Lp.': index + 1,
-      'Typ elementu': item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : 'Profil zamknięty',
-      'Profil': item.isStandard ? (item.profileName || 'Standardowy') : 'Niestandardowy (Geom.)',
+      'Typ elementu': item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : item.type === 'RURA' ? 'Rura' : 'Profil zamknięty',
+      'Profil': item.isStandard ? (item.profileName || 'Standardowy') : (item.type === 'RURA' ? 'Niestandardowy (Rura)' : 'Niestandardowy (Geom.)'),
       'Wymiary podstawowe': dimensionsStr,
       'Grubości ścianek': wallThicknessStr,
       'Ilość': item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.quantity} szt. x ${item.length} m`,
@@ -129,12 +131,15 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
                       item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły' : 
                       item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : 
                       item.type === 'PRET_PLASKI' ? 'Pręt płaski' : 
+                      item.type === 'RURA' ? 'Rura' : 
                       'Profil zamknięty';
 
     // Determine profile specification label
     let profileLabel = '';
     if (item.type === 'PRET_OKRAGLY') {
       profileLabel = `Srednica: fi ${item.h} mm`;
+    } else if (item.type === 'RURA') {
+      profileLabel = `Srednica: R fi ${item.h}`;
     } else if (item.type === 'PRET_KWADRATOWY') {
       profileLabel = `Bok: ${item.h}x${item.h} mm`;
     } else if (item.type === 'PRET_PLASKI') {
@@ -149,7 +154,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     let dimLabel = '';
     if (item.type === 'BLACHA') {
       dimLabel = `${item.h} x ${item.width} x ${Math.round(item.length * 1000)} mm`;
-    } else if (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY') {
+    } else if (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY' || item.type === 'RURA') {
       dimLabel = `Dlugosc: ${item.length.toFixed(2)} m`;
     } else if (item.type === 'PRET_PLASKI') {
       dimLabel = `Grubosc: ${item.h} mm, Dl: ${item.length.toFixed(2)} m`;
@@ -161,7 +166,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     let thickLabel = '-';
     if (item.type === 'PROFIL_ZAMKNIETY') {
       thickLabel = `Scianka: ${item.webThickness || 2} mm`;
-    } else if (item.type !== 'BLACHA' && item.type !== 'PRET_OKRAGLY' && item.type !== 'PRET_KWADRATOWY' && item.type !== 'PRET_PLASKI') {
+    } else if (item.type !== 'BLACHA' && item.type !== 'PRET_OKRAGLY' && item.type !== 'PRET_KWADRATOWY' && item.type !== 'PRET_PLASKI' && item.type !== 'RURA') {
       thickLabel = `${item.webThickness || '-'} / ${item.flangeThickness || '-'} mm`;
     }
     
@@ -229,6 +234,13 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
       if (data.row.index === tableRows.length - 1) {
         data.cell.styles.fillColor = [220, 252, 231]; // Green-100
         data.cell.styles.textColor = [21, 128, 61]; // Green-700
+      } else {
+        // Highlight Rura row with a different color (Orange-100 background, Orange-700 text)
+        const item = items[data.row.index];
+        if (item && item.type === 'RURA') {
+          data.cell.styles.fillColor = [255, 237, 213]; // Orange-100 / Amber-100
+          data.cell.styles.textColor = [194, 65, 12]; // Orange-700
+        }
       }
     }
   });
