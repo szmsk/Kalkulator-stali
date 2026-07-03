@@ -239,13 +239,18 @@ Wskazówki dodatkowe:
             const isQuotaOrRateLimit = 
               err.status === "RESOURCE_EXHAUSTED" || 
               err.status === 429 ||
+              err.code === 429 ||
+              err.statusCode === 429 ||
+              (err.error && (err.error.code === 429 || err.error.status === "RESOURCE_EXHAUSTED")) ||
               errStr.includes("RESOURCE_EXHAUSTED") ||
               errStr.includes("quota") ||
               errStr.includes("429") ||
-              errStr.includes("limit");
+              errStr.includes("limit") ||
+              errStr.includes("rate limit") ||
+              errStr.includes("Quota exceeded");
 
             if (isQuotaOrRateLimit) {
-              console.warn(`Detected quota limit or 429 error on ${modelName}. Switching immediately to the next available model...`);
+              console.warn(`[QUOTA EXCEEDED] Model ${modelName} returned 429 / resource exhausted. Switching immediately to the next model...`);
               break; // Break the attempt loop for the current model, continuing with the next model
             }
 
