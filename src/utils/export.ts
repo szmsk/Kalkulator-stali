@@ -17,7 +17,7 @@ function stripDiacritics(str: string): string {
  */
 export function exportToExcel(items: CalculationItem[], totalWeight: number): void {
   const totalSheetsPieces = items.filter(item => item.type === 'BLACHA').reduce((sum, item) => sum + item.quantity, 0);
-  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + item.length, 0);
+  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + (item.length * item.quantity), 0);
 
   const data = items.map((item, index) => {
     const dimensionsStr = item.type === 'BLACHA'
@@ -34,7 +34,7 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
       'Profil': item.isStandard ? (item.profileName || 'Standardowy') : 'Niestandardowy (Geom.)',
       'Wymiary podstawowe': dimensionsStr,
       'Grubości ścianek': wallThicknessStr,
-      'Ilość': item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.length} m`,
+      'Ilość': item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.quantity} szt. x ${item.length} m`,
       'Masa jedn. (kg)': item.calculatedWeightPerUnit,
       'Masa całkowita (kg)': item.calculatedWeightTotal,
       'Uwagi': item.notes || ''
@@ -82,7 +82,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
 
   const dateStr = new Date().toLocaleString('pl-PL');
   const totalSheetsPieces = items.filter(item => item.type === 'BLACHA').reduce((sum, item) => sum + item.quantity, 0);
-  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + item.length, 0);
+  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + (item.length * item.quantity), 0);
 
   // Document Title & Header
   doc.setFillColor(30, 41, 59); // Slate-800
@@ -171,7 +171,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
       stripDiacritics(profileLabel),
       stripDiacritics(dimLabel),
       stripDiacritics(thickLabel),
-      item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.length.toFixed(2)} m`,
+      item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.quantity} szt. x ${item.length.toFixed(2)} m`,
       `${item.calculatedWeightPerUnit.toFixed(2)} kg`,
       `${item.calculatedWeightTotal.toFixed(2)} kg`
     ];
