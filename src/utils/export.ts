@@ -16,27 +16,53 @@ function stripDiacritics(str: string): string {
  * Exports calculation items to Excel
  */
 export function exportToExcel(items: CalculationItem[], totalWeight: number): void {
-  const totalSheetsPieces = items.filter(item => item.type === 'BLACHA').reduce((sum, item) => sum + item.quantity, 0);
-  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + (item.length * item.quantity), 0);
+  const totalSheetsPieces = items.reduce((sum, item) => {
+    if (item.type === 'BLACHA') return sum + item.quantity;
+    if (item.type === 'RURA' && item.pipeMode === 'pieces') return sum + item.quantity;
+    return sum;
+  }, 0);
+  
+  const totalProfilesLength = items.reduce((sum, item) => {
+    if (item.type === 'BLACHA') return sum;
+    if (item.type === 'RURA' && item.pipeMode === 'pieces') return sum;
+    return sum + (item.length * item.quantity);
+  }, 0);
 
   const data = items.map((item, index) => {
-    const dimensionsStr = item.type === 'BLACHA'
-      ? `Grubość: ${item.h} mm, Szerokość: ${item.width} mm, Długość: ${Math.round(item.length * 1000)} mm`
-      : item.type === 'RURA'
-        ? `Średnica: R fi ${item.h}, Długość: ${item.length} m`
-        : `${item.profileName || item.type} (H: ${item.h} mm, S: ${item.width} mm, L: ${item.length} m)`;
+    const isMetersOnly = item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY' || item.type === 'PRET_PLASKI' || item.type === 'PROFIL_ZAMKNIETY' || item.type === 'KATOWNIK';
+    
+    let dimensionsStr = '';
+    if (item.type === 'BLACHA') {
+      dimensionsStr = `Grubość: ${item.h} mm, Szerokość: ${item.width} mm, Długość: ${Math.round(item.length * 1000)} mm`;
+    } else if (item.type === 'RURA') {
+      dimensionsStr = item.pipeMode === 'pieces'
+        ? `∅ ${item.h} mm, Ilość: ${item.quantity} szt.`
+        : `∅ ${item.h} mm, Długość: ${item.length} m`;
+    } else if (item.type === 'KATOWNIK') {
+      dimensionsStr = `Kątownik L: ${item.h}x${item.width}x${item.webThickness || 3} mm, Długość: ${item.length} m`;
+    } else {
+      dimensionsStr = `${item.profileName || item.type} (H: ${item.h} mm, S: ${item.width} mm, L: ${item.length} m)`;
+    }
 
-    const wallThicknessStr = (item.type !== 'BLACHA' && item.type !== 'RURA')
+    const wallThicknessStr = (item.type !== 'BLACHA' && item.type !== 'RURA' && item.type !== 'KATOWNIK')
       ? `Ścianka: ${item.webThickness || '-'} mm, Półka: ${item.flangeThickness || '-'} mm`
-      : 'N/A';
+      : (item.type === 'KATOWNIK' || item.type === 'RURA')
+        ? `Ścianka: ${item.webThickness || (item.type === 'KATOWNIK' ? 3 : 2)} mm`
+        : 'N/A';
 
     return {
       'Lp.': index + 1,
-      'Typ elementu': item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : item.type === 'RURA' ? 'Rura' : 'Profil zamknięty',
-      'Profil': item.isStandard ? (item.profileName || 'Standardowy') : (item.type === 'RURA' ? 'Niestandardowy (Rura)' : 'Niestandardowy (Geom.)'),
+      'Typ elementu': item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : item.type === 'RURA' ? 'Rura' : item.type === 'KATOWNIK' ? 'Kątownik' : 'Profil zamknięty',
+      'Profil': item.isStandard ? (item.profileName || 'Standardowy') : (item.type === 'RURA' ? 'Niestandardowy (Rura)' : item.type === 'KATOWNIK' ? 'Niestandardowy (Kątownik)' : 'Niestandardowy (Geom.)'),
       'Wymiary podstawowe': dimensionsStr,
       'Grubości ścianek': wallThicknessStr,
-      'Ilość': item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.quantity} szt. x ${item.length} m`,
+      'Ilość': item.type === 'BLACHA' 
+        ? `${item.quantity} szt.` 
+        : isMetersOnly
+          ? `${item.length} m`
+          : item.type === 'RURA'
+            ? (item.pipeMode === 'meters' ? `${item.length} m` : `${item.quantity} szt.`)
+            : `${item.quantity} szt. x ${item.length} m`,
       'Masa jedn. (kg)': item.calculatedWeightPerUnit,
       'Masa całkowita (kg)': item.calculatedWeightTotal,
       'Uwagi': item.notes || ''
@@ -132,14 +158,17 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
                       item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : 
                       item.type === 'PRET_PLASKI' ? 'Pręt płaski' : 
                       item.type === 'RURA' ? 'Rura' : 
+                      item.type === 'KATOWNIK' ? 'Kątownik' :
                       'Profil zamknięty';
 
     // Determine profile specification label
     let profileLabel = '';
     if (item.type === 'PRET_OKRAGLY') {
-      profileLabel = `Srednica: fi ${item.h} mm`;
+      profileLabel = `∅ ${item.h} mm`;
     } else if (item.type === 'RURA') {
-      profileLabel = `Srednica: R fi ${item.h}`;
+      profileLabel = `∅ ${item.h} mm`;
+    } else if (item.type === 'KATOWNIK') {
+      profileLabel = `L ${item.h}x${item.width} mm`;
     } else if (item.type === 'PRET_KWADRATOWY') {
       profileLabel = `Bok: ${item.h}x${item.h} mm`;
     } else if (item.type === 'PRET_PLASKI') {
@@ -152,9 +181,15 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
 
     // Determine dimensions label
     let dimLabel = '';
+    const isMetersOnly = item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY' || item.type === 'PRET_PLASKI' || item.type === 'PROFIL_ZAMKNIETY' || item.type === 'KATOWNIK';
+
     if (item.type === 'BLACHA') {
       dimLabel = `${item.h} x ${item.width} x ${Math.round(item.length * 1000)} mm`;
-    } else if (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY' || item.type === 'RURA') {
+    } else if (item.type === 'RURA') {
+      dimLabel = item.pipeMode === 'pieces'
+        ? `Same sztuki: ${item.quantity} szt.`
+        : `Dlugosc: ${item.length.toFixed(2)} m`;
+    } else if (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY') {
       dimLabel = `Dlugosc: ${item.length.toFixed(2)} m`;
     } else if (item.type === 'PRET_PLASKI') {
       dimLabel = `Grubosc: ${item.h} mm, Dl: ${item.length.toFixed(2)} m`;
@@ -164,9 +199,9 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
 
     // Determine thickness label
     let thickLabel = '-';
-    if (item.type === 'PROFIL_ZAMKNIETY') {
-      thickLabel = `Scianka: ${item.webThickness || 2} mm`;
-    } else if (item.type !== 'BLACHA' && item.type !== 'PRET_OKRAGLY' && item.type !== 'PRET_KWADRATOWY' && item.type !== 'PRET_PLASKI' && item.type !== 'RURA') {
+    if (item.type === 'PROFIL_ZAMKNIETY' || item.type === 'RURA' || item.type === 'KATOWNIK') {
+      thickLabel = `Scianka: ${item.webThickness || (item.type === 'KATOWNIK' ? 3 : 2)} mm`;
+    } else if (item.type !== 'BLACHA' && item.type !== 'PRET_OKRAGLY' && item.type !== 'PRET_KWADRATOWY' && item.type !== 'PRET_PLASKI') {
       thickLabel = `${item.webThickness || '-'} / ${item.flangeThickness || '-'} mm`;
     }
     
@@ -176,7 +211,13 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
       stripDiacritics(profileLabel),
       stripDiacritics(dimLabel),
       stripDiacritics(thickLabel),
-      item.type === 'BLACHA' ? `${item.quantity} szt.` : `${item.quantity} szt. x ${item.length.toFixed(2)} m`,
+      item.type === 'BLACHA' 
+        ? `${item.quantity} szt.` 
+        : isMetersOnly
+          ? `${item.length.toFixed(2)} m`
+          : item.type === 'RURA'
+            ? (item.pipeMode === 'meters' ? `${item.length.toFixed(2)} m` : `${item.quantity} szt.`)
+            : `${item.quantity} szt. x ${item.length.toFixed(2)} m`,
       `${item.calculatedWeightPerUnit.toFixed(2)} kg`,
       `${item.calculatedWeightTotal.toFixed(2)} kg`
     ];

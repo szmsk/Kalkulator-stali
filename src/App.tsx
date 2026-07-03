@@ -139,16 +139,23 @@ export default function App() {
     }
   }, [selectedProfileName, isStandard, activeTab]);
 
+  // Sync bar type quantity limit
+  useEffect(() => {
+    if (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') {
+      setQuantity(1);
+    }
+  }, [activeTab]);
+
   // Calculate live results
   const currentCalc = calculateWeight({
     type: activeTab,
     isStandard,
     profileName: selectedProfileName,
     h,
-    width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY') ? h : width,
+    width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'RURA') ? h : width,
     length: activeTab === 'BLACHA' ? length / 1000 : length,
-    quantity: quantity,
-    webThickness: activeTab === 'PROFIL_ZAMKNIETY' ? (webThickness !== '' ? Number(webThickness) : 2) : (webThickness === '' ? undefined : Number(webThickness)),
+    quantity: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : quantity,
+    webThickness: (activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'RURA' || activeTab === 'KATOWNIK') ? (webThickness !== '' ? Number(webThickness) : (activeTab === 'KATOWNIK' ? 3 : 2)) : (webThickness === '' ? undefined : Number(webThickness)),
     flangeThickness: flangeThickness === '' ? undefined : Number(flangeThickness),
   });
 
@@ -182,7 +189,9 @@ export default function App() {
     } else if (activeTab === 'PROFIL_ZAMKNIETY') {
       specName = `Profil zamk. ${h}x${width}x${webThickness || 2}mm`;
     } else if (activeTab === 'RURA') {
-      specName = `R fi ${h}`;
+      specName = `Rura Ø${h}x${webThickness || 2}mm`;
+    } else if (activeTab === 'KATOWNIK') {
+      specName = `Kątownik L ${h}x${width}x${webThickness || 3}mm`;
     } else {
       specName = `Geom. (${h}x${width}x${Math.round(length * 1000)}mm)`;
     }
@@ -196,9 +205,9 @@ export default function App() {
       h,
       width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'RURA') ? h : width,
       length: activeTab === 'BLACHA' ? length / 1000 : length, // Store standard normalized in meters
-      quantity: quantity,
-      webThickness: activeTab === 'PROFIL_ZAMKNIETY' ? (webThickness !== '' ? Number(webThickness) : 2) : (activeTab !== 'BLACHA' ? currentCalc.webThickness : undefined),
-      flangeThickness: (activeTab !== 'BLACHA' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && activeTab !== 'PROFIL_ZAMKNIETY' && activeTab !== 'RURA') ? currentCalc.flangeThickness : undefined,
+      quantity: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : quantity,
+      webThickness: (activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'RURA' || activeTab === 'KATOWNIK') ? (webThickness !== '' ? Number(webThickness) : (activeTab === 'KATOWNIK' ? 3 : 2)) : (activeTab !== 'BLACHA' ? currentCalc.webThickness : undefined),
+      flangeThickness: (activeTab !== 'BLACHA' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && activeTab !== 'PROFIL_ZAMKNIETY' && activeTab !== 'RURA' && activeTab !== 'KATOWNIK') ? currentCalc.flangeThickness : undefined,
       calculatedWeightPerUnit: currentCalc.unitWeight,
       calculatedWeightTotal: currentCalc.totalWeight,
       notes: activeTab === 'BLACHA' 
@@ -242,6 +251,7 @@ export default function App() {
     if (t === 'PRET_PLASKI') return 'Pręt płaski / Płaskownik';
     if (t === 'PROFIL_ZAMKNIETY') return 'Profil zamknięty';
     if (t === 'RURA') return 'Rura';
+    if (t === 'KATOWNIK') return 'Kątownik';
     return t;
   };
 
@@ -585,6 +595,26 @@ export default function App() {
                   activeTab === 'RURA' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>R fi</span>
               </button>
+
+              <button
+                onClick={() => {
+                  if (activeTab === 'BLACHA') {
+                    setLength(prev => prev / 1000);
+                  }
+                  setActiveTab('KATOWNIK');
+                  setIsStandard(false);
+                }}
+                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'KATOWNIK'
+                    ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                }`}
+              >
+                <span>Kątownik (L)</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                  activeTab === 'KATOWNIK' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
+                }`}>L</span>
+              </button>
             </div>
           </div>
 
@@ -755,7 +785,7 @@ export default function App() {
               </div>
 
               {/* WALL THICKNESS FOR CLOSED PROFILES */}
-              {activeTab === 'PROFIL_ZAMKNIETY' && (
+              {(activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'RURA' || activeTab === 'KATOWNIK') && (
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -766,14 +796,14 @@ export default function App() {
                     type="number"
                     value={webThickness}
                     onChange={(e) => setWebThickness(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Wprowadź grubość ścianki (np. 3)..."
+                    placeholder={activeTab === 'KATOWNIK' ? "Wprowadź grubość ścianki (np. 3)..." : "Wprowadź grubość ścianki (np. 2)..."}
                     className="w-full bg-white border border-slate-200 hover:border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
                   />
                 </div>
               )}
 
               {/* ADVANCED WALLS FOR CUSTOM PROFILE */}
-              {!isStandard && activeTab !== 'BLACHA' && activeTab !== 'PROFIL_ZAMKNIETY' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && (
+              {!isStandard && activeTab !== 'BLACHA' && activeTab !== 'PROFIL_ZAMKNIETY' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && activeTab !== 'RURA' && activeTab !== 'KATOWNIK' && (
                 <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div>
                     <div className="flex items-center justify-between mb-1">
@@ -835,10 +865,11 @@ export default function App() {
                     type="number"
                     min="1"
                     step="1"
-                    value={quantity || ''}
+                    disabled={activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI'}
+                    value={(activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : (quantity || '')}
                     onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
                     placeholder="1"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400"
                   />
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import { ShapeType, CalculationItem } from '../types';
-import { findStandardProfile } from '../data/profiles';
+import { findStandardProfile, STANDARD_ANGLE_BARS } from '../data/profiles';
 
 export const STEEL_DENSITY = 7.85; // kg/dm^3
 
@@ -16,17 +16,44 @@ export function calculateWeight(params: {
   quantity: number;
   webThickness?: number; // mm
   flangeThickness?: number; // mm
+  manualWeight?: number; // optional manual weight override (e.g., for RURA)
 }): { unitWeight: number; totalWeight: number; webThickness: number; flangeThickness: number } {
-  const { type, isStandard, profileName, h, width, length, quantity } = params;
+  const { type, isStandard, profileName, h, width, length, quantity, manualWeight } = params;
   
   let unitWeight = 0;
   let finalWebThickness = params.webThickness || 0;
   let finalFlangeThickness = params.flangeThickness || 0;
 
   if (type === 'RURA') {
-    // Rura is not calculated automatically, weight remains 0
-    unitWeight = 0;
-    finalWebThickness = 0;
+    // Rura: do not calculate automatically from dimensions. Return manual weight or 0.
+    const totalW = manualWeight !== undefined ? manualWeight : 0;
+    const unitW = quantity > 0 ? totalW / quantity : totalW;
+    return {
+      unitWeight: Math.round(unitW * 1000) / 1000,
+      totalWeight: Math.round(totalW * 1000) / 1000,
+      webThickness: params.webThickness || 2,
+      flangeThickness: 0
+    };
+  } else if (type === 'KATOWNIK') {
+    // Kątownik g/w (gorącowalcowany): h is height/leg1, width is width/leg2, webThickness is thickness
+    const wall = params.webThickness || 3;
+    const maxDim = Math.max(h, width);
+    const minDim = Math.min(h, width);
+    const key = `${maxDim}x${minDim}x${wall}`;
+    
+    let weightPerMeter = 0;
+    if (key in STANDARD_ANGLE_BARS) {
+      weightPerMeter = STANDARD_ANGLE_BARS[key];
+    } else {
+      // Fallback to geometric standard root/toe radii formula in mm^2
+      const r1 = wall + 2;
+      const r2 = wall <= 4 ? 2.5 : r1 / 2;
+      const area = wall * (h + width - wall) + (Math.pow(r1, 2) - 2 * Math.pow(r2, 2)) * (1 - Math.PI / 4);
+      weightPerMeter = (area * STEEL_DENSITY) / 1000;
+    }
+    
+    unitWeight = weightPerMeter * length;
+    finalWebThickness = wall;
     finalFlangeThickness = 0;
   } else if (type === 'BLACHA') {
     // Blacha: H is thickness (mm), width is mm, length is m

@@ -194,6 +194,9 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
           updated.webThickness = p.webThickness || null;
         } else {
           updated.standardProfileName = null;
+          if (type === 'PRET_OKRAGLY' || type === 'PRET_KWADRATOWY' || type === 'PRET_PLASKI') {
+            updated.quantity = 1;
+          }
         }
       }
       
@@ -253,10 +256,10 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
       isStandard: item.isStandard,
       profileName: finalProfileName || undefined,
       h: finalH,
-      width: (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY') ? finalH : finalWidth,
+      width: (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'RURA') ? finalH : finalWidth,
       length: item.length || 0,
-      quantity: item.quantity || 1,
-      webThickness: item.detectedType === 'PROFIL_ZAMKNIETY' ? (item.webThickness || 2) : matchedWebThick,
+      quantity: (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI') ? 1 : (item.quantity || 1),
+      webThickness: (item.detectedType === 'PROFIL_ZAMKNIETY' || item.detectedType === 'RURA' || item.detectedType === 'KATOWNIK') ? (item.webThickness || (item.detectedType === 'KATOWNIK' ? 3 : 2)) : matchedWebThick,
       flangeThickness: matchedFlangeThick
     });
 
@@ -410,6 +413,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                     if (t === 'PRET_PLASKI') return 'Pręt płaski / Płaskownik';
                     if (t === 'PROFIL_ZAMKNIETY') return 'Profil zamknięty';
                     if (t === 'RURA') return 'Rura';
+                    if (t === 'KATOWNIK') return 'Kątownik';
                     return t;
                   };
 
@@ -452,6 +456,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                               <option value="BLACHA">Blacha</option>
                               <option value="CEOWNIK">Ceownik</option>
                               <option value="DWUTEOWNIK">Dwuteownik</option>
+                              <option value="KATOWNIK">Kątownik</option>
                               <option value="PRET_OKRAGLY">Pręt okrągły</option>
                               <option value="PRET_KWADRATOWY">Pręt kwadratowy</option>
                               <option value="PRET_PLASKI">Płaskownik</option>
@@ -498,7 +503,8 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                               <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
                                 {item.detectedType === 'BLACHA' ? 'Grubość (mm)' : 
                                  (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'RURA') ? 'Średnica (mm)' : 
-                                 item.detectedType === 'PRET_PLASKI' ? 'Grubość (mm)' : 'Wysokość (mm)'}
+                                 item.detectedType === 'PRET_PLASKI' ? 'Grubość (mm)' : 
+                                 item.detectedType === 'KATOWNIK' ? 'Ramię H (mm)' : 'Wysokość (mm)'}
                               </label>
                               <input
                                 type="number"
@@ -510,9 +516,11 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                           )}
 
                           {/* DIMENSION WIDTH */}
-                          {!item.isStandard && (item.detectedType === 'BLACHA' || item.detectedType === 'PRET_PLASKI' || item.detectedType === 'PROFIL_ZAMKNIETY') && (
+                          {!item.isStandard && (item.detectedType === 'BLACHA' || item.detectedType === 'PRET_PLASKI' || item.detectedType === 'PROFIL_ZAMKNIETY' || item.detectedType === 'KATOWNIK') && (
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Szerokość (mm)</label>
+                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
+                                {item.detectedType === 'KATOWNIK' ? 'Szerokość S (mm)' : 'Szerokość (mm)'}
+                              </label>
                               <input
                                 type="number"
                                 value={item.width || ''}
@@ -523,7 +531,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                           )}
 
                           {/* WALL THICKNESS */}
-                          {!item.isStandard && item.detectedType === 'PROFIL_ZAMKNIETY' && (
+                          {!item.isStandard && (item.detectedType === 'PROFIL_ZAMKNIETY' || item.detectedType === 'RURA' || item.detectedType === 'KATOWNIK') && (
                             <div>
                               <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ścianka (mm)</label>
                               <input
@@ -554,21 +562,32 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                           </div>
 
                           {/* QUANTITY */}
-                          <div>
-                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ilość sztuk</label>
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value ? Number(e.target.value) : 1)}
-                              className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
-                            />
-                          </div>
+                          {(item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI') ? (
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ilość sztuk</label>
+                              <div className="w-full bg-slate-100 text-slate-400 border border-slate-200 rounded px-2 py-1 text-xs cursor-not-allowed font-medium">
+                                Brak (tylko metry)
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ilość sztuk</label>
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value ? Number(e.target.value) : 1)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   }
 
                   // Standard static item layout
+                  const isBarType = item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI';
+
                   return (
                     <div key={item.id} className={`p-2.5 rounded border text-[11px] text-slate-700 transition-colors flex gap-2 items-start ${
                       item.selected 
@@ -590,7 +609,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                             {idx + 1}. {item.isStandard ? item.standardProfileName : translateType(item.detectedType)}
                           </span>
                           <span className="text-orange-600 font-mono font-bold shrink-0">
-                            {item.quantity} szt.
+                            {isBarType ? `${item.length} m` : `${item.quantity} szt.`}
                           </span>
                         </div>
 
@@ -613,7 +632,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
 
                         {item.rawQuantityList && (
                           <div className="text-[9px] text-slate-400 mt-1">
-                            Suma z: {item.rawQuantityList} = {item.quantity} szt.
+                            {isBarType ? `Suma odcinków: ${item.rawQuantityList} = ${item.length} m` : `Suma z: ${item.rawQuantityList} = ${item.quantity} szt.`}
                           </div>
                         )}
                         {item.originalText && (

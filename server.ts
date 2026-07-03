@@ -69,7 +69,7 @@ async function startServer() {
       };
 
       const promptPart = {
-        text: `Dokonaj szczegółowej analizy zdjęcia przedstawiającego ręcznie zapisane w zeszycie/notesie linie z wymiarami elementów stalowych (blach, ceowników, dwuteowników, prętów okrągłych gładkich, prętów kwadratowych, prętów płaskich/płaskowników oraz profili zamkniętych). Zdjęcia będą robione telefonem iPhone 15 Pro, więc obraz jest wysokiej rozdzielczości, ale tekst może być pisany odręcznie, pod kątem, z cieniami lub skreśleniami.
+        text: `Dokonaj szczegółowej analizy zdjęcia przedstawiającego ręcznie zapisane w zeszycie/notesie linie z wymiarami elementów stalowych (blach, ceowników, dwuteowników, kątowników, prętów okrągłych gładkich, prętów kwadratowych, prętów płaskich/płaskowników, profili zamkniętych oraz rur). Zdjęcia będą robione telefonem iPhone 15 Pro, więc obraz jest wysokiej rozdzielczości, ale tekst może być pisany odręcznie, pod kątem, z cieniami lub skreśleniami.
 
 Twoim zadaniem jest odczytanie KAŻDEJ linii tekstu (może być ich nawet około 20) i dla każdej linii rozpoznanie rodzaju elementu, jego wymiarów i ilości.
 
@@ -82,10 +82,10 @@ Zasady zapisu w zeszycie i rozpoznawania:
      🚨 BARDZO WAŻNE DLA BLACH: Każda z tych liczb oddzielonych przecinkiem to CAŁKOWICIE OSOBNA ilość sztuk (liczba całkowita), które należy zsumować. 
      NIGDY nie łącz ich w ułamki dziesiętne! Np. zapis "6,7,8,6,4" oznacza pięć osobnych ilości sztuk: 6, 7, 8, 6, 4. Suma to 6+7+8+6+4 = 31. Zwróć 31 jako quantity, a "6,7,8,6,4" jako rawQuantityList. Długość (length) to 3.0.
 
-2. Sposób zapisu linii dla kształtowników, prętów i profili (CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, PROFIL_ZAMKNIETY, RURA) - podawane w METRACH (M):
+2. Sposób zapisu linii dla kształtowników, prętów i profili (CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, PROFIL_ZAMKNIETY, RURA, KATOWNIK) - podawane w METRACH (M):
    🚨 BARDZO WAŻNE: Dla tych elementów, liczby po przecinku na końcu linii oznaczają długości poszczególnych odcinków w METRACH, a nie sztuki! Sumujemy tylko metry bieżące!
-   Przykład: "UNP 120 - 2,2,4" lub "IPE 160 - 6,6,12" lub "fi 16 - 3,3,4" lub "profil 40x40x3 - 6,12" lub "R fi 40 - 6,12"
-   - Oznaczenie profilu np. "UNP 120", "IPE 160" (isStandard = true), "fi 16", "■14", "płaskownik 40x10", "profil 40x40x3" (isStandard = false).
+   Przykład: "UNP 120 - 2,2,4" lub "IPE 160 - 6,6,12" lub "fi 16 - 3,3,4" lub "profil 40x40x3 - 6,12" lub "R fi 40 - 6,12" lub "L 50x50x5 - 6,12"
+   - Oznaczenie profilu np. "UNP 120", "IPE 160" (isStandard = true), "fi 16", "■14", "płaskownik 40x10", "profil 40x40x3", "L 50x50x5" (isStandard = false).
    - Liczby po przecinku na końcu (np. "2,2,4" lub "6,6,12") to długości odcinków w METRACH. Należy je zsumować, aby otrzymać łączną długość (length).
      Na przykład: dla "UNP 120 - 2,2,4", odcinki mają długości 2m, 2m, 4m. Łączna długość w metrach (length) wynosi 2 + 2 + 4 = 8.0.
    - Ilość sztuk (quantity) dla tych elementów profilowych musi wynosić ZAWSZE 1.
@@ -105,9 +105,26 @@ Zasady zapisu w zeszycie i rozpoznawania:
      Przykład: "płaskownik 40x10 - 4,4" lub "pł. 50x8 - 10" lub "PL 80x10 - 6,5"
      Zwróć: detectedType = "PRET_PLASKI", h = grubość w mm (mniejszy wymiar, np. 10 lub 8), width = szerokość w mm (większy wymiar, np. 40, 50, 80), isStandard = false, standardProfileName = null. Zsumuj długości (np. 4+4 = 8m) i zwróć w length, quantity = 1.
    - PROFIL ZAMKNIĘTY / PROFIL BOX (PROFIL_ZAMKNIETY):
-     Oznaczany słowem "profil", "prof.", "prof. zam.", "profil zamknięty", "kubełek" lub zapisem "wysokość x szerokość x ścianka" (np. "40x40x3" lub "60x40x4").
-     Przykład: "profil 40x40x3 - 12,12" lub "60x40x4 - 2,3" lub "prof. zam. 80x80x4 - 5"
-     Zwróć: detectedType = "PROFIL_ZAMKNIETY", h = wysokość w mm (np. 40 lub 60), width = szerokość w mm (np. 40), webThickness = grubość ścianki w mm (np. 3 lub 4), isStandard = false, standardProfileName = null. Zsumuj długości (np. 12+12 = 24m) i zwróć w length, quantity = 1.
+     Oznaczany słowem "profil", "prof.", "prof. zam.", "profil zamknięty", "kubełek" lub samym zapisem "wysokość x szerokość x ścianka" (np. "40x40x3" lub "100x100x10").
+     🚨 WAŻNA ZASADA (ROZRÓŻNIENIE OD KĄTOWNIKA): Jeśli zapis ma format "100x100x10 L 20m" (gdzie litera L pojawia się DOPIERO PO wymiarach i oznacza długość "length", bez litery L na początku przed wymiarami), to jest to PROFIL_ZAMKNIETY.
+     Przykład: "100x100x10 L 20m" (profil zamknięty 100x100x10 o długości 20m) lub "60x40x4 L 12m" lub "profil 40x40x3 - 12,12" lub "60x40x4 - 2,3".
+     Zwróć: detectedType = "PROFIL_ZAMKNIETY", h = wysokość w mm (np. 100), width = szerokość w mm (np. 100), webThickness = grubość ścianki w mm (np. 10), isStandard = false, standardProfileName = null. Zsumuj długości (np. 20m -> length = 20) i zwróć w length, quantity = 1.
+
+    - RURA / RURY (RURA):
+      Oznaczana słowem "rura", "r.", "R fi", "R" itp., lub formatem "R fi [średnica]".
+      Przykład: "R fi 40 - 6,12" lub "rura 50 - 3,4" lub "R fi 60.3 - 6,12"
+      Zwróć: detectedType = "RURA", h = średnica w mm (np. 40 lub 50), width = średnica w mm (np. 40 lub 50), webThickness = grubość ścianki w mm (np. 2 lub 3), isStandard = false, standardProfileName = null. Zsumuj długości (np. 6+12 = 18m) i zwróć w length, quantity = 1.
+
+    - KĄTOWNIK / L (KATOWNIK):
+      Oznaczany literą "L" na początku/przed wymiarami, np. "L wysokość x szerokość x grubość" lub "L wysokość x szerokość x grubość L długość".
+      🚨 WAŻNA ZASADA (ROZRÓŻNIENIE OD PROFILU ZAMKNIĘTEGO): Kątownik ZAWSZE posiada literę „L” na samym początku lub bezpośrednio przed wymiarami (np. "L 100x100x10" lub "L 100x100x10 L - 24m"). Pierwsza litera „L” oznacza profil kątowy (Kątownik), a druga litera „L” po wymiarach oznacza długość.
+      Przykład: "L 100x100x10 L - 24m" (kątownik 100x100x10 o długości 24m) lub "L 50x50x5 - 6,12" lub "L 60x40x5 L 12m" lub "L 100x100x10 - 24".
+      Zwróć: detectedType = "KATOWNIK", h = ramię 1 w mm (np. 100), width = ramię 2 w mm (np. 100), webThickness = grubość ścianki/półki w mm (np. 10), isStandard = false, standardProfileName = null. Zsumuj długości (np. 24m -> length = 24) i zwróć w length, quantity = 1.
+
+  🚨 PODSUMOWANIE RÓŻNICY MIĘDZY PROFILAMI ZAMKNIĘTYMI A KĄTOWNIKAMI:
+  - Zapis typu: "L 100x100x10 L - 24m" -> Zaczyna się od "L" -> KĄTOWNIK (KATOWNIK) o wymiarach ramię 1 = 100, ramię 2 = 100, grubość = 10, długość = 24m.
+  - Zapis typu: "100x100x10 L 20m" -> NIE zaczyna się od "L" (litera L pojawia się dopiero po wymiarach) -> PROFIL ZAMKNIĘTY (PROFIL_ZAMKNIETY) o wymiarach wysokość = 100, szerokość = 100, grubość ścianki = 10, długość = 20m.
+  Bądź niezwykle czujny i precyzyjny w tym rozróżnieniu! Gdy widzisz "100x100x10 L 20m", pod żadnym pozorem nie oznaczaj tego jako kątownik! To jest PROFIL ZAMKNIĘTY. Gdy widzisz "L 100x100x10" na początku, to jest to KĄTOWNIK.
 
 4. ROZPOZNAWANIE ODRECZNYCH IKON I SYMBOLI (BARDZO WAŻNE):
    W zapiskach, zamiast literowych oznaczeń "IPE", "UPN", "HEB" itp., mogą pojawić się proste, odręczne symbole graficzne lub ikony narysowane obok wymiaru:
@@ -131,7 +148,8 @@ Wskazówki dodatkowe:
       let lastError: any = null;
       let responseText = "";
 
-      const modelsToTry = ["gemini-3.5-flash", "gemini-2.5-flash"];
+      // List of Gemini models to try in sequence for optimal success and quota availability
+      const modelsToTry = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-3.5-flash"];
       
       for (const modelName of modelsToTry) {
         let attempts = 3;
@@ -154,15 +172,15 @@ Wskazówki dodatkowe:
                         properties: {
                           detectedType: {
                             type: Type.STRING,
-                            description: "Musi być dokładnie: BLACHA, CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, PROFIL_ZAMKNIETY lub RURA"
+                            description: "Musi być dokładnie: BLACHA, CEOWNIK, DWUTEOWNIK, PRET_OKRAGLY, PRET_KWADRATOWY, PRET_PLASKI, PROFIL_ZAMKNIETY, RURA lub KATOWNIK"
                           },
                           h: {
                             type: Type.NUMBER,
-                            description: "Grubość blachy, średnica pręta okrągłego, bok pręta kwadratowego, grubość płaskownika lub wysokość profilu zamkniętego w mm."
+                            description: "Grubość blachy, średnica pręta okrągłego, bok pręta kwadratowego, grubość płaskownika, wysokość profilu zamkniętego, średnica rury lub ramię 1 kątownika w mm."
                           },
                           width: {
                             type: Type.NUMBER,
-                            description: "Szerokość blachy w mm, szerokość płaskownika w mm, szerokość profilu zamkniętego w mm. Dla prętów okrągłych ustaw taką samą jak h."
+                            description: "Szerokość blachy w mm, szerokość płaskownika w mm, szerokość profilu zamkniętego w mm, ramię 2 kątownika w mm. Dla prętów okrągłych i rur ustaw taką samą jak h."
                           },
                           length: {
                             type: Type.NUMBER,
@@ -186,7 +204,7 @@ Wskazówki dodatkowe:
                           },
                           webThickness: {
                             type: Type.NUMBER,
-                            description: "Grubość ścianki w mm (dla PROFIL_ZAMKNIETY, np. 3 dla profilu 40x40x3). Dla innych null/opcjonalne."
+                            description: "Grubość ścianki w mm (dla PROFIL_ZAMKNIETY, RURA, KATOWNIK, np. 3 dla profilu 40x40x3). Dla innych null/opcjonalne."
                           },
                           originalText: {
                             type: Type.STRING,
@@ -214,8 +232,23 @@ Wskazówki dodatkowe:
             }
           } catch (err: any) {
             lastError = err;
-            console.warn(`Attempt ${attempt} with model ${modelName} failed. Error:`, err.message || err);
+            const errStr = String(err.message || err || "");
+            console.warn(`Attempt ${attempt} with model ${modelName} failed. Error:`, errStr);
             
+            // Check if the error is a quota/rate limit error (429 or RESOURCE_EXHAUSTED)
+            const isQuotaOrRateLimit = 
+              err.status === "RESOURCE_EXHAUSTED" || 
+              err.status === 429 ||
+              errStr.includes("RESOURCE_EXHAUSTED") ||
+              errStr.includes("quota") ||
+              errStr.includes("429") ||
+              errStr.includes("limit");
+
+            if (isQuotaOrRateLimit) {
+              console.warn(`Detected quota limit or 429 error on ${modelName}. Switching immediately to the next available model...`);
+              break; // Break the attempt loop for the current model, continuing with the next model
+            }
+
             // If it's the last attempt of the last model, we don't sleep
             if (modelName === modelsToTry[modelsToTry.length - 1] && attempt === attempts) {
               break;

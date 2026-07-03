@@ -1,4 +1,4 @@
-export type ShapeType = 'BLACHA' | 'CEOWNIK' | 'DWUTEOWNIK' | 'PRET_OKRAGLY' | 'PRET_KWADRATOWY' | 'PRET_PLASKI' | 'PROFIL_ZAMKNIETY' | 'RURA';
+export type ShapeType = 'BLACHA' | 'CEOWNIK' | 'DWUTEOWNIK' | 'PRET_OKRAGLY' | 'PRET_KWADRATOWY' | 'PRET_PLASKI' | 'PROFIL_ZAMKNIETY' | 'RURA' | 'KATOWNIK';
 
 export type ProfileSystem = 'UNP' | 'UPE' | 'IPE' | 'IPN' | 'HEB' | 'HEA';
 
@@ -27,6 +27,8 @@ export interface CalculationItem {
   calculatedWeightPerUnit: number; // waga jednej sztuki (kg)
   calculatedWeightTotal: number; // waga łączna (kg)
   notes?: string;
+  pipeMode?: 'pieces' | 'meters';
+  isManualPipe?: boolean;
 }
 
 export interface AnalysisResult {

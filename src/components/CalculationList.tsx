@@ -37,11 +37,22 @@ export default function CalculationList({
   const [editQuantity, setEditQuantity] = useState<number>(1);
   const [editWebThickness, setEditWebThickness] = useState<number | ''>('');
   const [editFlangeThickness, setEditFlangeThickness] = useState<number | ''>('');
+  
+  const [editPipeMode, setEditPipeMode] = useState<'pieces' | 'meters'>('pieces');
+  const [editPipeManualWeight, setEditPipeManualWeight] = useState<number | ''>('');
 
   const totalWeight = items.reduce((sum, item) => sum + item.calculatedWeightTotal, 0);
   const totalWeightTonnes = totalWeight / 1000;
-  const totalSheetsPieces = items.filter(item => item.type === 'BLACHA').reduce((sum, item) => sum + item.quantity, 0);
-  const totalProfilesLength = items.filter(item => item.type !== 'BLACHA').reduce((sum, item) => sum + (item.length * item.quantity), 0);
+  const totalSheetsPieces = items.reduce((sum, item) => {
+    if (item.type === 'BLACHA') return sum + item.quantity;
+    if (item.type === 'RURA' && item.pipeMode === 'pieces') return sum + item.quantity;
+    return sum;
+  }, 0);
+  const totalProfilesLength = items.reduce((sum, item) => {
+    if (item.type === 'BLACHA') return sum;
+    if (item.type === 'RURA' && item.pipeMode === 'pieces') return sum;
+    return sum + (item.length * item.quantity);
+  }, 0);
 
   const handleExportExcel = () => {
     if (items.length === 0) return;
@@ -110,6 +121,9 @@ export default function CalculationList({
     setEditQuantity(item.quantity);
     setEditWebThickness(item.webThickness !== undefined ? item.webThickness : '');
     setEditFlangeThickness(item.flangeThickness !== undefined ? item.flangeThickness : '');
+    
+    setEditPipeMode(item.pipeMode || 'pieces');
+    setEditPipeManualWeight(item.type === 'RURA' ? item.calculatedWeightTotal : '');
   };
 
   // Sync profile dimensions to inputs when standard profile is chosen in modal
@@ -162,24 +176,29 @@ export default function CalculationList({
     }
   };
 
+  const isMetersOnly = editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY' || editType === 'PRET_PLASKI' || editType === 'PROFIL_ZAMKNIETY' || editType === 'KATOWNIK';
+
   // Recalculate live weight inside modal
   const currentCalcEdit = calculateWeight({
     type: editType,
     isStandard: editIsStandard,
     profileName: editIsStandard ? editProfileName : undefined,
     h: editH,
-    width: (editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY') ? editH : editWidth,
-    length: editType === 'BLACHA' ? editLength / 1000 : editLength,
-    quantity: editQuantity,
-    webThickness: editType === 'PROFIL_ZAMKNIETY' ? (editWebThickness !== '' ? Number(editWebThickness) : 2) : (editWebThickness === '' ? undefined : Number(editWebThickness)),
+    width: (editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY' || editType === 'RURA') ? editH : editWidth,
+    length: editType === 'BLACHA' ? editLength / 1000 : (editType === 'RURA' && editPipeMode === 'pieces') ? 0 : editLength,
+    quantity: isMetersOnly ? 1 : (editType === 'RURA' ? (editPipeMode === 'pieces' ? editQuantity : 1) : editQuantity),
+    webThickness: (editType === 'PROFIL_ZAMKNIETY' || editType === 'RURA' || editType === 'KATOWNIK') ? (editWebThickness !== '' ? Number(editWebThickness) : (editType === 'KATOWNIK' ? 3 : 2)) : (editWebThickness === '' ? undefined : Number(editWebThickness)),
     flangeThickness: editFlangeThickness === '' ? undefined : Number(editFlangeThickness),
+    manualWeight: editType === 'RURA' ? (editPipeManualWeight !== '' ? Number(editPipeManualWeight) : 0) : undefined,
   });
 
   // Save changes to current editing item
   const handleSave = () => {
     if (!editingItem) return;
 
-    const finalLength = editType === 'BLACHA' ? editLength / 1000 : editLength;
+    const isMetersOnly = editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY' || editType === 'PRET_PLASKI' || editType === 'PROFIL_ZAMKNIETY' || editType === 'KATOWNIK';
+    const finalLength = editType === 'BLACHA' ? editLength / 1000 : (editType === 'RURA' && editPipeMode === 'pieces') ? 0 : editLength;
+    const finalQuantity = isMetersOnly ? 1 : (editType === 'RURA' ? (editPipeMode === 'pieces' ? editQuantity : 1) : editQuantity);
     
     let specName = '';
     if (editIsStandard && (editType === 'CEOWNIK' || editType === 'DWUTEOWNIK')) {
@@ -187,15 +206,38 @@ export default function CalculationList({
     } else if (editType === 'BLACHA') {
       specName = `Blacha ${editH}x${editWidth}x${Math.round(editLength)}mm`;
     } else if (editType === 'PRET_OKRAGLY') {
-      specName = `Pręt okr. Ø${editH}mm`;
+      specName = `Pręt okr. ∅${editH}mm`;
     } else if (editType === 'PRET_KWADRATOWY') {
       specName = `Pręt kw. ■${editH}mm`;
     } else if (editType === 'PRET_PLASKI') {
       specName = `Płaskownik ${editH}x${editWidth}mm`;
+    } else if (editType === 'RURA') {
+      if (editPipeMode === 'pieces') {
+        specName = `Rura ∅${editH}x${editWebThickness || 2}mm (same sztuki)`;
+      } else {
+        specName = `Rura ∅${editH}x${editWebThickness || 2}mm (same metry)`;
+      }
+    } else if (editType === 'KATOWNIK') {
+      specName = `Kątownik L ${editH}x${editWidth}x${editWebThickness || 3}mm`;
     } else if (editType === 'PROFIL_ZAMKNIETY') {
       specName = `Profil zamk. ${editH}x${editWidth}x${editWebThickness || 2}mm`;
     } else {
       specName = `Geom. (${editH}x${editWidth}x${Math.round(editLength * 1000)}mm)`;
+    }
+
+    let notes = '';
+    if (editType === 'BLACHA') {
+      notes = `Grubość: ${editH} mm`;
+    } else if (editType === 'RURA') {
+      if (editPipeMode === 'pieces') {
+        notes = `${specName} - ${finalQuantity} szt.`;
+      } else {
+        notes = `${specName} - ${finalLength} m`;
+      }
+    } else if (isMetersOnly) {
+      notes = `${specName} - ${finalLength} m`;
+    } else {
+      notes = `${specName} - dł. ${finalLength} m`;
     }
 
     const updatedItem: CalculationItem = {
@@ -205,16 +247,15 @@ export default function CalculationList({
       profileSystem: editIsStandard ? editProfileSystem : undefined,
       profileName: editIsStandard ? editProfileName : undefined,
       h: editH,
-      width: (editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY') ? editH : editWidth,
+      width: (editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY' || editType === 'RURA') ? editH : editWidth,
       length: finalLength,
-      quantity: editQuantity,
-      webThickness: editType === 'PROFIL_ZAMKNIETY' ? (editWebThickness !== '' ? Number(editWebThickness) : 2) : (editType !== 'BLACHA' ? currentCalcEdit.webThickness : undefined),
-      flangeThickness: (editType !== 'BLACHA' && editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && editType !== 'PRET_PLASKI' && editType !== 'PROFIL_ZAMKNIETY') ? currentCalcEdit.flangeThickness : undefined,
+      quantity: finalQuantity,
+      webThickness: (editType === 'PROFIL_ZAMKNIETY' || editType === 'RURA' || editType === 'KATOWNIK') ? (editWebThickness !== '' ? Number(editWebThickness) : (editType === 'KATOWNIK' ? 3 : 2)) : (editType !== 'BLACHA' ? currentCalcEdit.webThickness : undefined),
+      flangeThickness: (editType !== 'BLACHA' && editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && editType !== 'PRET_PLASKI' && editType !== 'PROFIL_ZAMKNIETY' && editType !== 'RURA' && editType !== 'KATOWNIK') ? currentCalcEdit.flangeThickness : undefined,
       calculatedWeightPerUnit: currentCalcEdit.unitWeight,
       calculatedWeightTotal: currentCalcEdit.totalWeight,
-      notes: editType === 'BLACHA' 
-        ? `Grubość: ${editH} mm` 
-        : `${specName} - dł. ${editType === 'BLACHA' ? editLength + 'mm' : finalLength + 'm'}`
+      notes,
+      pipeMode: editType === 'RURA' ? editPipeMode : undefined,
     };
 
     onUpdateItem(editingItem.id, updatedItem);
@@ -282,6 +323,8 @@ export default function CalculationList({
                     item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' :
                     item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' :
                     item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' :
+                    item.type === 'RURA' ? 'Rura' :
+                    item.type === 'KATOWNIK' ? 'Kątownik' :
                     'Profil zamknięty';
                   
                   return (
@@ -296,7 +339,7 @@ export default function CalculationList({
                       <td className="px-3 py-3.5 text-slate-500 leading-relaxed font-mono text-[11px]">
                         {item.type === 'PRET_OKRAGLY' ? (
                           <>
-                            <div>Średnica: Ø {item.h} mm</div>
+                            <div>Średnica: ∅ {item.h} mm</div>
                             <div>Długość: {item.length} m</div>
                           </>
                         ) : item.type === 'PRET_KWADRATOWY' ? (
@@ -309,9 +352,23 @@ export default function CalculationList({
                             <div>Grubość: {item.h} mm | Szerokość: {item.width} mm</div>
                             <div>Długość: {item.length} m</div>
                           </>
+                        ) : item.type === 'RURA' ? (
+                          <>
+                            <div>Średnica: ∅ {item.h} mm | Ścianka: {item.webThickness || 2} mm</div>
+                            {item.pipeMode === 'pieces' ? (
+                              <div className="text-slate-400 font-sans text-[10px]">Bez długości (same sztuki)</div>
+                            ) : (
+                              <div>Długość: {item.length} m</div>
+                            )}
+                          </>
                         ) : item.type === 'PROFIL_ZAMKNIETY' ? (
                           <>
                             <div>Wymiar: {item.h}x{item.width} mm | Ścianka: {item.webThickness || 2} mm</div>
+                            <div>Długość: {item.length} m</div>
+                          </>
+                        ) : item.type === 'KATOWNIK' ? (
+                          <>
+                            <div>Kątownik L: {item.h}x{item.width} mm | Ścianka: {item.webThickness || 3} mm</div>
                             <div>Długość: {item.length} m</div>
                           </>
                         ) : (
@@ -324,7 +381,13 @@ export default function CalculationList({
                       <td className="px-3 py-3.5 text-right font-medium text-slate-800 whitespace-nowrap">
                         {item.type === 'BLACHA' 
                           ? `${item.quantity} szt.` 
-                          : `${item.quantity} szt. x ${item.length.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} m`
+                          : (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY' || item.type === 'PRET_PLASKI' || item.type === 'PROFIL_ZAMKNIETY' || item.type === 'KATOWNIK')
+                            ? `${item.length.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} m`
+                            : item.type === 'RURA'
+                              ? item.pipeMode === 'pieces'
+                                ? `${item.quantity} szt.`
+                                : `${item.length.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} m`
+                              : `${item.quantity} szt. x ${item.length.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} m`
                         }
                       </td>
                       <td className="px-3 py-3.5 text-right font-semibold text-slate-900 whitespace-nowrap">
@@ -487,7 +550,7 @@ export default function CalculationList({
                   Typ elementu
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {(['BLACHA', 'CEOWNIK', 'DWUTEOWNIK', 'PRET_OKRAGLY', 'PRET_KWADRATOWY', 'PRET_PLASKI', 'PROFIL_ZAMKNIETY'] as ShapeType[]).map((type) => {
+                  {(['BLACHA', 'CEOWNIK', 'DWUTEOWNIK', 'PRET_OKRAGLY', 'PRET_KWADRATOWY', 'PRET_PLASKI', 'PROFIL_ZAMKNIETY', 'RURA', 'KATOWNIK'] as ShapeType[]).map((type) => {
                     const label = 
                       type === 'BLACHA' ? 'Blacha' :
                       type === 'CEOWNIK' ? 'Ceownik' :
@@ -495,6 +558,8 @@ export default function CalculationList({
                       type === 'PRET_OKRAGLY' ? 'Pręt okrągły' :
                       type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' :
                       type === 'PRET_PLASKI' ? 'Pręt płaski' :
+                      type === 'RURA' ? 'Rura' :
+                      type === 'KATOWNIK' ? 'Kątownik' :
                       'Profil zamknięty';
                     return (
                       <button
@@ -605,8 +670,10 @@ export default function CalculationList({
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                     {editType === 'BLACHA' ? 'Grubość H (mm)' : 
                      editType === 'PRET_OKRAGLY' ? 'Średnica Ø (mm)' :
+                     editType === 'RURA' ? 'Średnica Ø (mm)' :
                      editType === 'PRET_KWADRATOWY' ? 'Bok kwadratu a (mm)' :
                      editType === 'PRET_PLASKI' ? 'Grubość H (mm)' :
+                     editType === 'KATOWNIK' ? 'Ramię H (mm)' :
                      'Wysokość H (mm)'}
                   </label>
                   <input
@@ -618,11 +685,12 @@ export default function CalculationList({
                   />
                 </div>
 
-                {editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && (
+                {editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && editType !== 'RURA' && (
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                       {editType === 'BLACHA' ? 'Szerokość S (mm)' : 
                        editType === 'PRET_PLASKI' ? 'Szerokość S (mm)' :
+                       editType === 'KATOWNIK' ? 'Ramię S (mm)' :
                        'Szerokość półki S (mm)'}
                     </label>
                     <input
@@ -637,7 +705,7 @@ export default function CalculationList({
               </div>
 
               {/* Web/Flange Thickness for Custom Profiles */}
-              {editType === 'PROFIL_ZAMKNIETY' && (
+              {(editType === 'PROFIL_ZAMKNIETY' || editType === 'RURA' || editType === 'KATOWNIK') && (
                 <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                     g - Grubość ścianki (mm)
@@ -646,13 +714,13 @@ export default function CalculationList({
                     type="number"
                     value={editWebThickness}
                     onChange={(e) => setEditWebThickness(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="np. 3"
+                    placeholder={editType === 'KATOWNIK' ? 'np. 3' : 'np. 2'}
                     className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
                   />
                 </div>
               )}
 
-              {!editIsStandard && editType !== 'BLACHA' && editType !== 'PROFIL_ZAMKNIETY' && editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && editType !== 'PRET_PLASKI' && (
+              {!editIsStandard && editType !== 'BLACHA' && editType !== 'PROFIL_ZAMKNIETY' && editType !== 'RURA' && editType !== 'KATOWNIK' && editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && editType !== 'PRET_PLASKI' && (
                 <div className="grid grid-cols-2 gap-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
@@ -682,6 +750,62 @@ export default function CalculationList({
                 </div>
               )}
 
+              {/* RURA Mode and Manual Weight Section */}
+              {editType === 'RURA' && (
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Wybierz sposób podania rury
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 bg-slate-200 p-0.5 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPipeMode('pieces');
+                          setEditQuantity(1);
+                        }}
+                        className={`py-1 text-xs font-semibold rounded-md transition-colors ${
+                          editPipeMode === 'pieces'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-800'
+                        }`}
+                      >
+                        Same sztuki (szt.)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPipeMode('meters');
+                          setEditQuantity(1);
+                        }}
+                        className={`py-1 text-xs font-semibold rounded-md transition-colors ${
+                          editPipeMode === 'meters'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-800'
+                        }`}
+                      >
+                        Same metry (m)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Masa całkowita tej pozycji (kg)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editPipeManualWeight}
+                      onChange={(e) => setEditPipeManualWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Wpisz masę rury ręcznie"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Length & Quantity Inputs */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -691,9 +815,11 @@ export default function CalculationList({
                   <input
                     type="number"
                     step={editType === 'BLACHA' ? '1' : '0.01'}
-                    value={editLength || ''}
+                    disabled={editType === 'RURA' && editPipeMode === 'pieces'}
+                    value={(editType === 'RURA' && editPipeMode === 'pieces') ? '' : (editLength || '')}
                     onChange={(e) => setEditLength(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                    placeholder={(editType === 'RURA' && editPipeMode === 'pieces') ? 'Nie dotyczy' : ''}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
                   />
                 </div>
 
@@ -705,9 +831,10 @@ export default function CalculationList({
                     type="number"
                     min="1"
                     step="1"
-                    value={editQuantity || ''}
+                    disabled={isMetersOnly || (editType === 'RURA' && editPipeMode === 'meters')}
+                    value={(isMetersOnly || (editType === 'RURA' && editPipeMode === 'meters')) ? 1 : (editQuantity || '')}
                     onChange={(e) => setEditQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-1 focus:ring-orange-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
                   />
                 </div>
               </div>
