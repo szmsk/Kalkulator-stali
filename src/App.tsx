@@ -91,9 +91,22 @@ export default function App() {
   const [webThickness, setWebThickness] = useState<number | ''>('');
   const [flangeThickness, setFlangeThickness] = useState<number | ''>('');
 
+  // RURA specific state
+  const [pipeMode, setPipeMode] = useState<'pieces' | 'meters'>('pieces');
+  const [pipeType, setPipeType] = useState<'zwykla' | 'wiertnicza'>('zwykla');
+  const [pipeManualWeight, setPipeManualWeight] = useState<number | ''>('');
+
   // Item list state
   const [calculationItems, setCalculationItems] = useState<CalculationItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Sync pipe modes and reset quantity / weight on mode change
+  useEffect(() => {
+    if (activeTab === 'RURA') {
+      setPipeManualWeight('');
+      setQuantity(1);
+    }
+  }, [activeTab, pipeMode]);
 
   // Sync profile options when system or standard tab changes
   useEffect(() => {
@@ -153,10 +166,11 @@ export default function App() {
     profileName: selectedProfileName,
     h,
     width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'RURA') ? h : width,
-    length: activeTab === 'BLACHA' ? length / 1000 : length,
-    quantity: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : quantity,
+    length: activeTab === 'BLACHA' ? length / 1000 : (activeTab === 'RURA' && pipeMode === 'pieces') ? 0 : length,
+    quantity: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : (activeTab === 'RURA' ? (pipeMode === 'pieces' ? quantity : 1) : quantity),
     webThickness: (activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'RURA' || activeTab === 'KATOWNIK') ? (webThickness !== '' ? Number(webThickness) : (activeTab === 'KATOWNIK' ? 3 : 2)) : (webThickness === '' ? undefined : Number(webThickness)),
     flangeThickness: flangeThickness === '' ? undefined : Number(flangeThickness),
+    manualWeight: activeTab === 'RURA' ? (pipeManualWeight !== '' ? Number(pipeManualWeight) : undefined) : undefined,
   });
 
   // Calculate totals for export buttons in navigation
@@ -189,12 +203,20 @@ export default function App() {
     } else if (activeTab === 'PROFIL_ZAMKNIETY') {
       specName = `Profil zamk. ${h}x${width}x${webThickness || 2}mm`;
     } else if (activeTab === 'RURA') {
-      specName = `Rura Ø${h}x${webThickness || 2}mm`;
+      const pTypeLabel = pipeType === 'zwykla' ? 'zwykła' : 'wiertnicza';
+      if (pipeMode === 'pieces') {
+        specName = `Rura ∅${h}mm (${pTypeLabel}, same sztuki)`;
+      } else {
+        specName = `Rura ∅${h}mm (${pTypeLabel}, same metry)`;
+      }
     } else if (activeTab === 'KATOWNIK') {
       specName = `Kątownik L ${h}x${width}x${webThickness || 3}mm`;
     } else {
       specName = `Geom. (${h}x${width}x${Math.round(length * 1000)}mm)`;
     }
+
+    const finalLength = activeTab === 'BLACHA' ? length / 1000 : (activeTab === 'RURA' && pipeMode === 'pieces') ? 0 : length;
+    const finalQuantity = (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : (activeTab === 'RURA' ? (pipeMode === 'pieces' ? quantity : 1) : quantity);
 
     const newItem: CalculationItem = {
       id: crypto.randomUUID(),
@@ -204,15 +226,19 @@ export default function App() {
       profileName: isStandard ? selectedProfileName : undefined,
       h,
       width: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'RURA') ? h : width,
-      length: activeTab === 'BLACHA' ? length / 1000 : length, // Store standard normalized in meters
-      quantity: (activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : quantity,
-      webThickness: (activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'RURA' || activeTab === 'KATOWNIK') ? (webThickness !== '' ? Number(webThickness) : (activeTab === 'KATOWNIK' ? 3 : 2)) : (activeTab !== 'BLACHA' ? currentCalc.webThickness : undefined),
+      length: finalLength, // Store standard normalized in meters
+      quantity: finalQuantity,
+      webThickness: activeTab === 'RURA' ? undefined : ((activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'KATOWNIK') ? (webThickness !== '' ? Number(webThickness) : (activeTab === 'KATOWNIK' ? 3 : 2)) : (activeTab !== 'BLACHA' ? currentCalc.webThickness : undefined)),
       flangeThickness: (activeTab !== 'BLACHA' && activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'PRET_PLASKI' && activeTab !== 'PROFIL_ZAMKNIETY' && activeTab !== 'RURA' && activeTab !== 'KATOWNIK') ? currentCalc.flangeThickness : undefined,
-      calculatedWeightPerUnit: currentCalc.unitWeight,
-      calculatedWeightTotal: currentCalc.totalWeight,
+      calculatedWeightPerUnit: activeTab === 'RURA' ? 0 : currentCalc.unitWeight,
+      calculatedWeightTotal: activeTab === 'RURA' ? 0 : currentCalc.totalWeight,
+      pipeMode: activeTab === 'RURA' ? pipeMode : undefined,
+      pipeType: activeTab === 'RURA' ? pipeType : undefined,
       notes: activeTab === 'BLACHA' 
         ? `Grubość: ${h} mm` 
-        : `${specName} - dł. ${activeTab === 'BLACHA' ? length + 'mm' : length + 'm'}`
+        : activeTab === 'RURA'
+          ? (pipeMode === 'pieces' ? `${specName} - ${finalQuantity} szt.` : `${specName} - ${finalLength} m`)
+          : `${specName} - dł. ${length}m`
     };
 
     setCalculationItems(prev => [...prev, newItem]);
@@ -734,6 +760,48 @@ export default function App() {
 
             {/* INPUT FIELDS AREA */}
             <div className="space-y-4">
+              
+              {/* RURA Mode Toggle */}
+              {activeTab === 'RURA' && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Sposób dodania rury
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-200 p-0.5 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPipeMode('pieces');
+                        setQuantity(1);
+                        setPipeManualWeight('');
+                      }}
+                      className={`py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                        pipeMode === 'pieces'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      Same sztuki (szt.)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPipeMode('meters');
+                        setQuantity(1);
+                        setPipeManualWeight('');
+                      }}
+                      className={`py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                        pipeMode === 'meters'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      Same metry (m)
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 
                 {/* INPUT: HEIGHT / THICKNESS H */}
@@ -785,7 +853,7 @@ export default function App() {
               </div>
 
               {/* WALL THICKNESS FOR CLOSED PROFILES */}
-              {(activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'RURA' || activeTab === 'KATOWNIK') && (
+              {(activeTab === 'PROFIL_ZAMKNIETY' || activeTab === 'KATOWNIK') && (
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -799,6 +867,39 @@ export default function App() {
                     placeholder={activeTab === 'KATOWNIK' ? "Wprowadź grubość ścianki (np. 3)..." : "Wprowadź grubość ścianki (np. 2)..."}
                     className="w-full bg-white border border-slate-200 hover:border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
                   />
+                </div>
+              )}
+
+              {/* Rodzaj rury selection instead of wall thickness */}
+              {activeTab === 'RURA' && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    Rodzaj rury
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-200 p-0.5 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setPipeType('zwykla')}
+                      className={`py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                        pipeType === 'zwykla'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      1. Zwykła
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPipeType('wiertnicza')}
+                      className={`py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                        pipeType === 'wiertnicza'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      2. Wiertnicza
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -839,40 +940,78 @@ export default function App() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                
-                {/* INPUT: LENGTH */}
+              {/* RURA Specific conditional inputs */}
+              {activeTab === 'RURA' && pipeMode === 'pieces' && (
                 <div className="space-y-2">
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    {activeTab === 'BLACHA' ? 'Długość odcinka (mm)' : 'Długość odcinka (m)'}
-                  </label>
-                  <input
-                    type="number"
-                    step={activeTab === 'BLACHA' ? '1' : '0.01'}
-                    value={length || ''}
-                    onChange={(e) => setLength(Number(e.target.value))}
-                    placeholder={activeTab === 'BLACHA' ? 'np. 2500' : 'np. 6.0'}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
-                  />
-                </div>
-
-                {/* INPUT: QUANTITY */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Ilość sztuk
+                    Ilość sztuk (szt.)
                   </label>
                   <input
                     type="number"
                     min="1"
                     step="1"
-                    disabled={activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI'}
-                    value={(activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : (quantity || '')}
+                    value={quantity || ''}
                     onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
-                    placeholder="1"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400"
+                    placeholder="np. 10"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
                   />
                 </div>
-              </div>
+              )}
+
+              {activeTab === 'RURA' && pipeMode === 'meters' && (
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Długość (m)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={length || ''}
+                    onChange={(e) => setLength(Number(e.target.value))}
+                    placeholder="np. 6.0"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
+                  />
+                </div>
+              )}
+
+              {/* Standard inputs for non-RURA shapes */}
+              {activeTab !== 'RURA' && (
+                <div className="grid grid-cols-2 gap-4">
+                  
+                  {/* INPUT: LENGTH */}
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {activeTab === 'BLACHA' ? 'Długość odcinka (mm)' : 'Długość odcinka (m)'}
+                    </label>
+                    <input
+                      type="number"
+                      step={activeTab === 'BLACHA' ? '1' : '0.01'}
+                      value={length || ''}
+                      onChange={(e) => setLength(Number(e.target.value))}
+                      placeholder={activeTab === 'BLACHA' ? 'np. 2500' : 'np. 6.0'}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
+                    />
+                  </div>
+
+                  {/* INPUT: QUANTITY */}
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Ilość sztuk
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      disabled={activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI'}
+                      value={(activeTab === 'PRET_OKRAGLY' || activeTab === 'PRET_KWADRATOWY' || activeTab === 'PRET_PLASKI') ? 1 : (quantity || '')}
+                      onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value))))}
+                      placeholder="1"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -882,25 +1021,33 @@ export default function App() {
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Wynik Obliczeń</h3>
             </div>
             <div className="flex-1 flex flex-col items-center justify-center p-8">
-              <div className="text-slate-400 text-sm font-medium mb-1">Całkowita masa ładunku:</div>
+              <div className="text-slate-400 text-sm font-medium mb-1">
+                {activeTab === 'RURA' ? 'Wynik pozycji:' : 'Całkowita masa ładunku:'}
+              </div>
               <div className="text-5xl lg:text-7xl font-light text-white tracking-tighter">
-                {currentCalc.totalWeight.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} <span className="text-3xl text-orange-500 font-bold ml-1">kg</span>
+                {activeTab === 'RURA' 
+                  ? (pipeMode === 'pieces' ? `${quantity || 0}` : `${length || 0}`)
+                  : currentCalc.totalWeight.toLocaleString('pl-PL', { minimumFractionDigits: 2 })
+                }
+                <span className="text-3xl text-orange-500 font-bold ml-1">
+                  {activeTab === 'RURA' ? (pipeMode === 'pieces' ? 'szt.' : 'm') : 'kg'}
+                </span>
               </div>
               
               <div className="mt-4 grid grid-cols-3 gap-8 w-full max-w-md border-t border-slate-800 pt-6 text-center">
                 <div>
                   <div className="text-[10px] text-slate-500 uppercase">Sztuka</div>
                   <div className="text-lg font-semibold text-slate-200">
-                    {currentCalc.unitWeight.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} kg
+                    {activeTab === 'RURA' ? '-' : `${currentCalc.unitWeight.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} kg`}
                   </div>
                 </div>
                 <div className="border-x border-slate-800 px-2">
                   <div className="text-[10px] text-slate-500 uppercase">Objętość</div>
                   <div className="text-lg font-semibold text-slate-200">
-                    {((activeTab === 'BLACHA' 
+                    {activeTab === 'RURA' ? '-' : `${((activeTab === 'BLACHA' 
                       ? (h * width * length) / 1000000000 
                       : (currentCalc.unitWeight / 7850) * length
-                    ) * quantity).toLocaleString('pl-PL', { maximumFractionDigits: 3 })} m³
+                    ) * quantity).toLocaleString('pl-PL', { maximumFractionDigits: 3 })} m³`}
                   </div>
                 </div>
                 <div>
@@ -912,7 +1059,14 @@ export default function App() {
             
             <button
               onClick={handleAddItem}
-              disabled={!h || (activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'RURA' && !width) || !length || (activeTab === 'BLACHA' ? !quantity : false)}
+              disabled={
+                !h || 
+                (activeTab !== 'PRET_OKRAGLY' && activeTab !== 'PRET_KWADRATOWY' && activeTab !== 'RURA' && !width) || 
+                (activeTab === 'RURA' 
+                  ? (pipeMode === 'pieces' ? !quantity : !length)
+                  : !length) || 
+                (activeTab === 'BLACHA' ? !quantity : false)
+              }
               className="h-12 bg-orange-600 flex items-center justify-center cursor-pointer hover:bg-orange-500 transition-colors border-none text-white font-bold uppercase tracking-widest text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Dodaj do zestawienia zbiorczego

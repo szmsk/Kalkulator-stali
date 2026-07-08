@@ -39,6 +39,7 @@ export default function CalculationList({
   const [editFlangeThickness, setEditFlangeThickness] = useState<number | ''>('');
   
   const [editPipeMode, setEditPipeMode] = useState<'pieces' | 'meters'>('pieces');
+  const [editPipeType, setEditPipeType] = useState<'zwykla' | 'wiertnicza'>('zwykla');
   const [editPipeManualWeight, setEditPipeManualWeight] = useState<number | ''>('');
 
   const totalWeight = items.reduce((sum, item) => sum + item.calculatedWeightTotal, 0);
@@ -123,6 +124,7 @@ export default function CalculationList({
     setEditFlangeThickness(item.flangeThickness !== undefined ? item.flangeThickness : '');
     
     setEditPipeMode(item.pipeMode || 'pieces');
+    setEditPipeType(item.pipeType || 'zwykla');
     setEditPipeManualWeight(item.type === 'RURA' ? item.calculatedWeightTotal : '');
   };
 
@@ -212,10 +214,11 @@ export default function CalculationList({
     } else if (editType === 'PRET_PLASKI') {
       specName = `Płaskownik ${editH}x${editWidth}mm`;
     } else if (editType === 'RURA') {
+      const pTypeLabel = editPipeType === 'zwykla' ? 'zwykła' : 'wiertnicza';
       if (editPipeMode === 'pieces') {
-        specName = `Rura ∅${editH}x${editWebThickness || 2}mm (same sztuki)`;
+        specName = `Rura ∅${editH}mm (${pTypeLabel}, same sztuki)`;
       } else {
-        specName = `Rura ∅${editH}x${editWebThickness || 2}mm (same metry)`;
+        specName = `Rura ∅${editH}mm (${pTypeLabel}, same metry)`;
       }
     } else if (editType === 'KATOWNIK') {
       specName = `Kątownik L ${editH}x${editWidth}x${editWebThickness || 3}mm`;
@@ -250,12 +253,13 @@ export default function CalculationList({
       width: (editType === 'PRET_OKRAGLY' || editType === 'PRET_KWADRATOWY' || editType === 'RURA') ? editH : editWidth,
       length: finalLength,
       quantity: finalQuantity,
-      webThickness: (editType === 'PROFIL_ZAMKNIETY' || editType === 'RURA' || editType === 'KATOWNIK') ? (editWebThickness !== '' ? Number(editWebThickness) : (editType === 'KATOWNIK' ? 3 : 2)) : (editType !== 'BLACHA' ? currentCalcEdit.webThickness : undefined),
+      webThickness: editType === 'RURA' ? undefined : ((editType === 'PROFIL_ZAMKNIETY' || editType === 'KATOWNIK') ? (editWebThickness !== '' ? Number(editWebThickness) : (editType === 'KATOWNIK' ? 3 : 2)) : (editType !== 'BLACHA' ? currentCalcEdit.webThickness : undefined)),
       flangeThickness: (editType !== 'BLACHA' && editType !== 'PRET_OKRAGLY' && editType !== 'PRET_KWADRATOWY' && editType !== 'PRET_PLASKI' && editType !== 'PROFIL_ZAMKNIETY' && editType !== 'RURA' && editType !== 'KATOWNIK') ? currentCalcEdit.flangeThickness : undefined,
-      calculatedWeightPerUnit: currentCalcEdit.unitWeight,
-      calculatedWeightTotal: currentCalcEdit.totalWeight,
+      calculatedWeightPerUnit: editType === 'RURA' ? 0 : currentCalcEdit.unitWeight,
+      calculatedWeightTotal: editType === 'RURA' ? 0 : currentCalcEdit.totalWeight,
       notes,
       pipeMode: editType === 'RURA' ? editPipeMode : undefined,
+      pipeType: editType === 'RURA' ? editPipeType : undefined,
     };
 
     onUpdateItem(editingItem.id, updatedItem);
@@ -354,7 +358,7 @@ export default function CalculationList({
                           </>
                         ) : item.type === 'RURA' ? (
                           <>
-                            <div>Średnica: ∅ {item.h} mm | Ścianka: {item.webThickness || 2} mm</div>
+                            <div>Średnica: ∅ {item.h} mm | Typ: {item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykła'}</div>
                             {item.pipeMode === 'pieces' ? (
                               <div className="text-slate-400 font-sans text-[10px]">Bez długości (same sztuki)</div>
                             ) : (
@@ -391,7 +395,7 @@ export default function CalculationList({
                         }
                       </td>
                       <td className="px-3 py-3.5 text-right font-semibold text-slate-900 whitespace-nowrap">
-                        {item.calculatedWeightTotal.toLocaleString('pl-PL', { minimumFractionDigits: 1 })} kg
+                        {item.type === 'RURA' ? '-' : `${item.calculatedWeightTotal.toLocaleString('pl-PL', { minimumFractionDigits: 1 })} kg`}
                       </td>
                       <td className="px-3 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -705,7 +709,7 @@ export default function CalculationList({
               </div>
 
               {/* Web/Flange Thickness for Custom Profiles */}
-              {(editType === 'PROFIL_ZAMKNIETY' || editType === 'RURA' || editType === 'KATOWNIK') && (
+              {(editType === 'PROFIL_ZAMKNIETY' || editType === 'KATOWNIK') && (
                 <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                     g - Grubość ścianki (mm)
@@ -717,6 +721,39 @@ export default function CalculationList({
                     placeholder={editType === 'KATOWNIK' ? 'np. 3' : 'np. 2'}
                     className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
                   />
+                </div>
+              )}
+
+              {/* Pipe Type Selection for Edit Modal */}
+              {editType === 'RURA' && (
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    Rodzaj rury
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-200 p-0.5 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setEditPipeType('zwykla')}
+                      className={`py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                        editPipeType === 'zwykla'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      1. Zwykła
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditPipeType('wiertnicza')}
+                      className={`py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                        editPipeType === 'wiertnicza'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      2. Wiertnicza
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -750,7 +787,7 @@ export default function CalculationList({
                 </div>
               )}
 
-              {/* RURA Mode and Manual Weight Section */}
+              {/* RURA Mode Section */}
               {editType === 'RURA' && (
                 <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
                   <div>
@@ -787,21 +824,6 @@ export default function CalculationList({
                         Same metry (m)
                       </button>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                      Masa całkowita tej pozycji (kg)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editPipeManualWeight}
-                      onChange={(e) => setEditPipeManualWeight(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="Wpisz masę rury ręcznie"
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                    />
                   </div>
                 </div>
               )}

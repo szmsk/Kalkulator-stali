@@ -25,13 +25,10 @@ export function calculateWeight(params: {
   let finalFlangeThickness = params.flangeThickness || 0;
 
   if (type === 'RURA') {
-    // Rura: do not calculate automatically from dimensions. Return manual weight or 0.
-    const totalW = manualWeight !== undefined ? manualWeight : 0;
-    const unitW = quantity > 0 ? totalW / quantity : totalW;
     return {
-      unitWeight: Math.round(unitW * 1000) / 1000,
-      totalWeight: Math.round(totalW * 1000) / 1000,
-      webThickness: params.webThickness || 2,
+      unitWeight: 0,
+      totalWeight: 0,
+      webThickness: params.webThickness || 0,
       flangeThickness: 0
     };
   } else if (type === 'KATOWNIK') {

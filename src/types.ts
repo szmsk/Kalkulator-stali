@@ -28,6 +28,7 @@ export interface CalculationItem {
   calculatedWeightTotal: number; // waga łączna (kg)
   notes?: string;
   pipeMode?: 'pieces' | 'meters';
+  pipeType?: 'zwykla' | 'wiertnicza';
   isManualPipe?: boolean;
 }
 

@@ -35,9 +35,10 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
     if (item.type === 'BLACHA') {
       dimensionsStr = `Grubość: ${item.h} mm, Szerokość: ${item.width} mm, Długość: ${Math.round(item.length * 1000)} mm`;
     } else if (item.type === 'RURA') {
+      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'wiertnicza' : 'zwykła';
       dimensionsStr = item.pipeMode === 'pieces'
-        ? `∅ ${item.h} mm, Ilość: ${item.quantity} szt.`
-        : `∅ ${item.h} mm, Długość: ${item.length} m`;
+        ? `∅ ${item.h} mm (${pTypeLabel}), Ilość: ${item.quantity} szt.`
+        : `∅ ${item.h} mm (${pTypeLabel}), Długość: ${item.length} m`;
     } else if (item.type === 'KATOWNIK') {
       dimensionsStr = `Kątownik L: ${item.h}x${item.width}x${item.webThickness || 3} mm, Długość: ${item.length} m`;
     } else {
@@ -46,9 +47,11 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
 
     const wallThicknessStr = (item.type !== 'BLACHA' && item.type !== 'RURA' && item.type !== 'KATOWNIK')
       ? `Ścianka: ${item.webThickness || '-'} mm, Półka: ${item.flangeThickness || '-'} mm`
-      : (item.type === 'KATOWNIK' || item.type === 'RURA')
-        ? `Ścianka: ${item.webThickness || (item.type === 'KATOWNIK' ? 3 : 2)} mm`
-        : 'N/A';
+      : item.type === 'KATOWNIK'
+        ? `Ścianka: ${item.webThickness || 3} mm`
+        : item.type === 'RURA'
+          ? `Typ: ${item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykła'}`
+          : 'N/A';
 
     return {
       'Lp.': index + 1,
@@ -63,8 +66,8 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
           : item.type === 'RURA'
             ? (item.pipeMode === 'meters' ? `${item.length} m` : `${item.quantity} szt.`)
             : `${item.quantity} szt. x ${item.length} m`,
-      'Masa jedn. (kg)': item.calculatedWeightPerUnit,
-      'Masa całkowita (kg)': item.calculatedWeightTotal,
+      'Masa jedn. (kg)': item.type === 'RURA' ? '-' : item.calculatedWeightPerUnit,
+      'Masa całkowita (kg)': item.type === 'RURA' ? '-' : item.calculatedWeightTotal,
       'Uwagi': item.notes || ''
     };
   });
@@ -166,7 +169,8 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     if (item.type === 'PRET_OKRAGLY') {
       profileLabel = `∅ ${item.h} mm`;
     } else if (item.type === 'RURA') {
-      profileLabel = `∅ ${item.h} mm`;
+      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykla';
+      profileLabel = `∅ ${item.h} mm (${pTypeLabel})`;
     } else if (item.type === 'KATOWNIK') {
       profileLabel = `L ${item.h}x${item.width} mm`;
     } else if (item.type === 'PRET_KWADRATOWY') {
@@ -199,8 +203,10 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
 
     // Determine thickness label
     let thickLabel = '-';
-    if (item.type === 'PROFIL_ZAMKNIETY' || item.type === 'RURA' || item.type === 'KATOWNIK') {
+    if (item.type === 'PROFIL_ZAMKNIETY' || item.type === 'KATOWNIK') {
       thickLabel = `Scianka: ${item.webThickness || (item.type === 'KATOWNIK' ? 3 : 2)} mm`;
+    } else if (item.type === 'RURA') {
+      thickLabel = `Typ: ${item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykla'}`;
     } else if (item.type !== 'BLACHA' && item.type !== 'PRET_OKRAGLY' && item.type !== 'PRET_KWADRATOWY' && item.type !== 'PRET_PLASKI') {
       thickLabel = `${item.webThickness || '-'} / ${item.flangeThickness || '-'} mm`;
     }
@@ -218,8 +224,8 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
           : item.type === 'RURA'
             ? (item.pipeMode === 'meters' ? `${item.length.toFixed(2)} m` : `${item.quantity} szt.`)
             : `${item.quantity} szt. x ${item.length.toFixed(2)} m`,
-      `${item.calculatedWeightPerUnit.toFixed(2)} kg`,
-      `${item.calculatedWeightTotal.toFixed(2)} kg`
+      item.type === 'RURA' ? '-' : `${item.calculatedWeightPerUnit.toFixed(2)} kg`,
+      item.type === 'RURA' ? '-' : `${item.calculatedWeightTotal.toFixed(2)} kg`
     ];
   });
 
