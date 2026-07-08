@@ -86,6 +86,7 @@ Zasady zapisu w zeszycie i rozpoznawania:
    🚨 BARDZO WAŻNE: Dla tych elementów, liczby po przecinku na końcu linii oznaczają długości poszczególnych odcinków w METRACH, a nie sztuki! Sumujemy tylko metry bieżące!
    Przykład: "UNP 120 - 2,2,4" lub "IPE 160 - 6,6,12" lub "fi 16 - 3,3,4" lub "profil 40x40x3 - 6,12" lub "R fi 40 - 6,12" lub "L 50x50x5 - 6,12"
    - Oznaczenie profilu np. "UNP 120", "IPE 160" (isStandard = true), "fi 16", "■14", "płaskownik 40x10", "profil 40x40x3", "L 50x50x5" (isStandard = false).
+   - 🚨 BARDZO WAŻNE DLA CEOWNIKÓW (CEOWNIK): Jeżeli w zeszycie zapisana jest nazwa "C [rozmiar]" (np. "C 160" lub "C160" lub "C-160" lub "C - 160"), oznacza to standardowy profil CEOWNIK. Musisz bezwzględnie zmapować to na standardową nazwę "UNP [rozmiar]" (np. "UNP 160"). Wtedy ustaw isStandard = true oraz standardProfileName = "UNP [rozmiar]" (np. "UNP 160").
    - Liczby po przecinku na końcu (np. "2,2,4" lub "6,6,12") to długości odcinków w METRACH. Należy je zsumować, aby otrzymać łączną długość (length).
      Na przykład: dla "UNP 120 - 2,2,4", odcinki mają długości 2m, 2m, 4m. Łączna długość w metrach (length) wynosi 2 + 2 + 4 = 8.0.
    - Ilość sztuk (quantity) dla tych elementów profilowych musi wynosić ZAWSZE 1.
@@ -129,7 +130,7 @@ Zasady zapisu w zeszycie i rozpoznawania:
 4. ROZPOZNAWANIE ODRECZNYCH IKON I SYMBOLI (BARDZO WAŻNE):
    W zapiskach, zamiast literowych oznaczeń "IPE", "UPN", "HEB" itp., mogą pojawić się proste, odręczne symbole graficzne lub ikony narysowane obok wymiaru:
    - DWUTEOWNIK: rysowany jako pionowa kreska z dwoma poziomymi poprzeczkami (u góry i u dołu) – przypomina to wielką, wyraźną literę "I" z szerokimi daszkami, profil dwuteownika, lub literę "H". Jeśli przy danej pozycji znajduje się taki symbol, rozpoznaj go jako DWUTEOWNIK.
-   - CEOWNIK: rysowany jako pionowa linia z dwiema krótkimi poziomymi kreskami w bok, tworząca kształt otwartego z boku ceownika, nawiasu kwadratowego "[" lub "]" albo obróconej litery "U" lub litery "C". Jeśli przy danej pozycji znajduje się taki symbol, rozpoznaj go jako CEOWNIK.
+   - CEOWNIK: rysowany jako pionowa linia z dwiema krótkimi poziomymi kreskami w bok, tworząca kształt otwartego z boku ceownika, nawiasu kwadratowego "[" lub "]" albo obróconej litery "U" lub litery "C". Jeśli przy danej pozycji znajduje się taki symbol, rozpoznaj go jako CEOWNIK. Jeśli obok niego lub zamiast niego zapisano np. "C 160" lub "C120", przyporządkuj to do standardowego profilu "UNP 160" lub "UNP 120".
    - TEOWNIK: rysowany jako litera "T".
 
 5. ⚠️ WAŻNE - ROZPOZNAWANIE CYFR (POLSKIE PISMO RĘCZNE):
@@ -276,6 +277,87 @@ Wskazówki dodatkowe:
       }
 
       const parsedResult = JSON.parse(responseText.trim());
+      
+      // Programmatic normalization of CEOWNIK (C 160 -> UNP 160)
+      if (parsedResult && Array.isArray(parsedResult.items)) {
+        const UNP_PROFILES: Record<string, { height: number, width: number, webThickness: number }> = {
+          'UNP 50': { height: 50, width: 38, webThickness: 5.0 },
+          'UNP 65': { height: 65, width: 42, webThickness: 5.5 },
+          'UNP 80': { height: 80, width: 45, webThickness: 6.0 },
+          'UNP 100': { height: 100, width: 50, webThickness: 6.0 },
+          'UNP 120': { height: 120, width: 55, webThickness: 7.0 },
+          'UNP 140': { height: 140, width: 60, webThickness: 7.0 },
+          'UNP 160': { height: 160, width: 65, webThickness: 7.5 },
+          'UNP 180': { height: 180, width: 70, webThickness: 8.0 },
+          'UNP 200': { height: 200, width: 75, webThickness: 8.5 },
+          'UNP 220': { height: 220, width: 80, webThickness: 9.0 },
+          'UNP 240': { height: 240, width: 85, webThickness: 9.5 },
+          'UNP 260': { height: 260, width: 90, webThickness: 10.0 },
+          'UNP 300': { height: 300, width: 100, webThickness: 10.0 },
+          'UNP 320': { height: 320, width: 100, webThickness: 14.0 },
+          'UNP 350': { height: 350, width: 100, webThickness: 14.0 },
+          'UNP 400': { height: 400, width: 110, webThickness: 14.0 }
+        };
+
+        parsedResult.items = parsedResult.items.map((item: any) => {
+          let updatedName = item.standardProfileName;
+          
+          // If detected type is CEOWNIK or original text indicates a C-channel, normalize it
+          const isCeownik = item.detectedType === "CEOWNIK" || 
+            (item.originalText && /^[\[\]]|(?:^|\b)(?:C|UNP|UPN)\s*-?\s*\d+/i.test(item.originalText));
+
+          if (isCeownik) {
+            item.detectedType = "CEOWNIK";
+            item.isStandard = true;
+            
+            // Try to extract standard name from standardProfileName first
+            let rawName = String(updatedName || "").trim().toUpperCase();
+            
+            // If standardProfileName is empty/invalid but originalText is available, try to parse from there
+            if (!rawName && item.originalText) {
+              const textUpper = item.originalText.toUpperCase();
+              // Look for patterns like C 160, C160, C-160, UNP 160, UPN 160
+              const match = textUpper.match(/\b(?:C|UNP|UPN)\s*-?\s*(\d+)\b/);
+              if (match) {
+                rawName = `UNP ${match[1]}`;
+              }
+            }
+
+            // Normalization mappings for C-channels (e.g., C 160 -> UNP 160)
+            const cMatch = rawName.match(/^C\s*-?\s*(\d+)$/i);
+            const unpMatch = rawName.match(/^(?:UNP|UPN)\s*-?\s*(\d+)$/i);
+            
+            if (cMatch) {
+              updatedName = `UNP ${cMatch[1]}`;
+            } else if (unpMatch) {
+              updatedName = `UNP ${unpMatch[1]}`;
+            } else if (rawName.startsWith("C") && !rawName.startsWith("CEOWNIK")) {
+              const digitsOnly = rawName.substring(1).trim();
+              if (/^\d+$/.test(digitsOnly)) {
+                updatedName = `UNP ${digitsOnly}`;
+              }
+            } else if (/^\d+$/.test(rawName)) {
+              // Just a number was returned (e.g. "160")
+              updatedName = `UNP ${rawName}`;
+            }
+
+            // Set normalized name
+            item.standardProfileName = updatedName;
+
+            // Backfill dimensions (height, width, thickness) for the standard UNP profile
+            if (updatedName && UNP_PROFILES[updatedName]) {
+              const dims = UNP_PROFILES[updatedName];
+              item.h = dims.height;
+              item.width = dims.width;
+              if (dims.webThickness) {
+                item.webThickness = dims.webThickness;
+              }
+            }
+          }
+          return item;
+        });
+      }
+
       res.json(parsedResult);
     } catch (error: any) {
       console.error("Gemini API Proxy Error:", error);
