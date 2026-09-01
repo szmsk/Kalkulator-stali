@@ -19,9 +19,14 @@ interface EditableAnalyzedItem {
   isStandard: boolean;
   standardProfileName: string | null;
   webThickness?: number | null;
+  customName?: string;
+  customDimensions?: string;
   originalText?: string;
   selected: boolean;
   isEditing?: boolean;
+  pipeMode?: 'pieces' | 'meters';
+  pipeType?: 'zwykla' | 'wiertnicza';
+  lengthUnit?: 'm' | 'mm'; // unit chosen in scanner edit mode
 }
 
 export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderProps) {
@@ -111,7 +116,8 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
         ...item,
         id: crypto.randomUUID(),
         selected: true,
-        isEditing: false
+        isEditing: false,
+        lengthUnit: item.detectedType === 'BLACHA' ? 'mm' : 'm'
       })));
     } catch (err: any) {
       console.error(err);
@@ -184,6 +190,11 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
       // If type changed, set smart defaults
       if (field === 'detectedType') {
         const type = value as ShapeType;
+        if (type === 'BLACHA') {
+          updated.lengthUnit = 'mm';
+        } else if (!updated.lengthUnit) {
+          updated.lengthUnit = 'm';
+        }
         updated.isStandard = (type === 'CEOWNIK' || type === 'DWUTEOWNIK');
         if (updated.isStandard) {
           const firstProfile = type === 'CEOWNIK' ? STANDARD_CHANNELS[0].name : STANDARD_IBEAMS[0].name;
@@ -194,8 +205,13 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
           updated.webThickness = p.webThickness || null;
         } else {
           updated.standardProfileName = null;
-          if (type === 'PRET_OKRAGLY' || type === 'PRET_KWADRATOWY' || type === 'PRET_PLASKI') {
+          if (type === 'PRET_OKRAGLY' || type === 'PRET_KWADRATOWY' || type === 'PRET_PLASKI' || type === 'RURA_OKRAGLA') {
             updated.quantity = 1;
+          }
+          if (type === 'RURA_OKRAGLA') {
+            if (!updated.h) updated.h = 60.3;
+            if (!updated.width) updated.width = 60.3;
+            if (!updated.webThickness) updated.webThickness = 3.2;
           }
         }
       }
@@ -256,10 +272,10 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
       isStandard: item.isStandard,
       profileName: finalProfileName || undefined,
       h: finalH,
-      width: (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'RURA') ? finalH : finalWidth,
+      width: (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'RURA' || item.detectedType === 'RURA_OKRAGLA') ? finalH : finalWidth,
       length: item.length || 0,
-      quantity: (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI') ? 1 : (item.quantity || 1),
-      webThickness: (item.detectedType === 'PROFIL_ZAMKNIETY' || item.detectedType === 'RURA' || item.detectedType === 'KATOWNIK') ? (item.webThickness || (item.detectedType === 'KATOWNIK' ? 3 : 2)) : matchedWebThick,
+      quantity: (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI' || item.detectedType === 'RURA_OKRAGLA') ? 1 : (item.quantity || 1),
+      webThickness: (item.detectedType === 'PROFIL_ZAMKNIETY' || item.detectedType === 'RURA' || item.detectedType === 'RURA_OKRAGLA' || item.detectedType === 'KATOWNIK') ? (item.webThickness || (item.detectedType === 'RURA_OKRAGLA' ? 3.2 : (item.detectedType === 'KATOWNIK' ? 3 : 2))) : matchedWebThick,
       flangeThickness: matchedFlangeThick
     });
 
@@ -412,8 +428,10 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                     if (t === 'PRET_KWADRATOWY') return 'Pręt kwadratowy';
                     if (t === 'PRET_PLASKI') return 'Pręt płaski / Płaskownik';
                     if (t === 'PROFIL_ZAMKNIETY') return 'Profil zamknięty';
+                    if (t === 'RURA_OKRAGLA') return 'Rura okrągła';
                     if (t === 'RURA') return 'Rura';
                     if (t === 'KATOWNIK') return 'Kątownik';
+                    if (t === 'INNY') return 'Inne';
                     return t;
                   };
 
@@ -461,9 +479,37 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                               <option value="PRET_KWADRATOWY">Pręt kwadratowy</option>
                               <option value="PRET_PLASKI">Płaskownik</option>
                               <option value="PROFIL_ZAMKNIETY">Profil zamknięty</option>
-                              <option value="RURA">Rura</option>
+                              <option value="RURA_OKRAGLA">Rura okrągła (RO ze ścianką, np. Ø60,3x3)</option>
+                              <option value="RURA">Rura (sztuki / bez ścianki)</option>
+                              <option value="INNY">Inne</option>
                             </select>
                           </div>
+
+                          {/* INNY FIELDS */}
+                          {item.detectedType === 'INNY' && (
+                            <>
+                              <div className="col-span-2">
+                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nazwa elementu</label>
+                                <input
+                                  type="text"
+                                  value={item.customName || ''}
+                                  placeholder="np. Zaślepka PVC, Uchwyt"
+                                  onChange={(e) => handleItemChange(item.id, 'customName', e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                                />
+                              </div>
+                              <div className="col-span-2">
+                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Opis / Wymiary (opcjonalnie)</label>
+                                <input
+                                  type="text"
+                                  value={item.customDimensions || ''}
+                                  placeholder="np. fi 50 / 2 szt."
+                                  onChange={(e) => handleItemChange(item.id, 'customDimensions', e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                                />
+                              </div>
+                            </>
+                          )}
 
                           {/* STANDARD OPTION */}
                           {(item.detectedType === 'CEOWNIK' || item.detectedType === 'DWUTEOWNIK') && (
@@ -502,14 +548,19 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                             <div>
                               <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
                                 {item.detectedType === 'BLACHA' ? 'Grubość (mm)' : 
-                                 (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'RURA') ? 'Średnica (mm)' : 
+                                 (item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'RURA' || item.detectedType === 'RURA_OKRAGLA') ? 'Średnica Ø (mm)' : 
                                  item.detectedType === 'PRET_PLASKI' ? 'Grubość (mm)' : 
                                  item.detectedType === 'KATOWNIK' ? 'Ramię H (mm)' : 'Wysokość (mm)'}
                               </label>
                               <input
                                 type="number"
-                                value={item.h || ''}
-                                onChange={(e) => handleItemChange(item.id, 'h', e.target.value ? Number(e.target.value) : null)}
+                                step="any"
+                                value={item.h ?? ''}
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(',', '.');
+                                  handleItemChange(item.id, 'h', raw ? Number(raw) : null);
+                                }}
+                                placeholder="np. 60.3 lub 60,3"
                                 className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
                               />
                             </div>
@@ -523,50 +574,161 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                               </label>
                               <input
                                 type="number"
-                                value={item.width || ''}
-                                onChange={(e) => handleItemChange(item.id, 'width', e.target.value ? Number(e.target.value) : null)}
+                                step="any"
+                                value={item.width ?? ''}
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(',', '.');
+                                  handleItemChange(item.id, 'width', raw ? Number(raw) : null);
+                                }}
                                 className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
                               />
                             </div>
                           )}
 
                           {/* WALL THICKNESS */}
-                          {!item.isStandard && (item.detectedType === 'PROFIL_ZAMKNIETY' || item.detectedType === 'RURA' || item.detectedType === 'KATOWNIK') && (
+                          {!item.isStandard && (item.detectedType === 'PROFIL_ZAMKNIETY' || item.detectedType === 'RURA' || item.detectedType === 'RURA_OKRAGLA' || item.detectedType === 'KATOWNIK') && (
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ścianka (mm)</label>
+                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ścianka g (mm)</label>
                               <input
                                 type="number"
-                                value={item.webThickness || ''}
-                                onChange={(e) => handleItemChange(item.id, 'webThickness', e.target.value ? Number(e.target.value) : null)}
+                                step="any"
+                                value={item.webThickness ?? ''}
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(',', '.');
+                                  handleItemChange(item.id, 'webThickness', raw ? Number(raw) : null);
+                                }}
+                                placeholder="np. 3 lub 3.2"
                                 className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
                               />
                             </div>
                           )}
 
-                          {/* LENGTH */}
-                          <div>
-                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
-                              {item.detectedType === 'BLACHA' ? 'Długość (mm)' : 'Długość (m)'}
-                            </label>
-                            <input
-                              type="number"
-                              step="any"
-                              value={item.detectedType === 'BLACHA' ? Math.round((item.length || 0) * 1000) : (item.length || '')}
-                              onChange={(e) => {
-                                const val = e.target.value ? Number(e.target.value) : null;
-                                const parsedVal = (item.detectedType === 'BLACHA' && val !== null) ? val / 1000 : val;
-                                handleItemChange(item.id, 'length', parsedVal);
-                              }}
-                              className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
-                            />
-                          </div>
+                          {/* RURA ADDITIONAL FIELDS */}
+                          {item.detectedType === 'RURA' && (
+                            <>
+                              <div>
+                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Rodzaj rury</label>
+                                <select
+                                  value={item.pipeType || 'zwykla'}
+                                  onChange={(e) => handleItemChange(item.id, 'pipeType', e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                                >
+                                  <option value="zwykla">Zwykła</option>
+                                  <option value="wiertnicza">Wiertnicza</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Tryb rury</label>
+                                <select
+                                  value={item.pipeMode || 'pieces'}
+                                  onChange={(e) => {
+                                    const newMode = e.target.value as 'pieces' | 'meters';
+                                    handleItemChange(item.id, 'pipeMode', newMode);
+                                    if (newMode === 'pieces') {
+                                      handleItemChange(item.id, 'length', 0);
+                                    }
+                                  }}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                                >
+                                  <option value="pieces">Sztuki (pieces)</option>
+                                  <option value="meters">Metry (meters)</option>
+                                </select>
+                              </div>
+                            </>
+                          )}
+
+                          {/* LENGTH - CHOICE OF M OR MM FOR PROFILES, ALWAYS MM FOR BLACHA */}
+                          {item.detectedType === 'BLACHA' ? (
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
+                                Długość (mm)
+                              </label>
+                              <input
+                                type="number"
+                                step="1"
+                                value={item.length ? Math.round(item.length * 1000) : ''}
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(',', '.');
+                                  const val = raw !== '' ? Number(raw) : null;
+                                  handleItemChange(item.id, 'length', val !== null ? val / 1000 : null);
+                                }}
+                                placeholder="np. 2500 lub 3000"
+                                className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="block text-[9px] font-bold text-slate-400 uppercase">
+                                  Długość ({item.lengthUnit || 'm'})
+                                </label>
+                                {!(item.detectedType === 'RURA' && item.pipeMode === 'pieces') && (
+                                  <div className="inline-flex rounded shadow-xs bg-slate-200 p-0.5 text-[9px] font-bold">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleItemChange(item.id, 'lengthUnit', 'm')}
+                                      className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                                        (item.lengthUnit || 'm') === 'm'
+                                          ? 'bg-orange-500 text-white shadow-xs'
+                                          : 'text-slate-600 hover:text-slate-900'
+                                      }`}
+                                    >
+                                      m
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleItemChange(item.id, 'lengthUnit', 'mm')}
+                                      className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                                        item.lengthUnit === 'mm'
+                                          ? 'bg-orange-500 text-white shadow-xs'
+                                          : 'text-slate-600 hover:text-slate-900'
+                                      }`}
+                                    >
+                                      mm
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              {item.detectedType === 'RURA' && item.pipeMode === 'pieces' ? (
+                                <div className="w-full bg-slate-100 text-slate-400 border border-slate-200 rounded px-2 py-1 text-xs cursor-not-allowed font-medium">
+                                  Brak (tryb sztuk)
+                                </div>
+                              ) : item.lengthUnit === 'mm' ? (
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={item.length ? Math.round(item.length * 1000) : ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(',', '.');
+                                    const val = raw !== '' ? Number(raw) : null;
+                                    handleItemChange(item.id, 'length', val !== null ? val / 1000 : null);
+                                  }}
+                                  placeholder="np. 6000 lub 12000"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                                />
+                              ) : (
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={item.length ?? ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(',', '.');
+                                    const val = raw !== '' ? Number(raw) : null;
+                                    handleItemChange(item.id, 'length', val);
+                                  }}
+                                  placeholder="np. 6.0 lub 12"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs"
+                                />
+                              )}
+                            </div>
+                          )}
 
                           {/* QUANTITY */}
-                          {(item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI') ? (
+                          {(item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI' || item.detectedType === 'RURA_OKRAGLA' || (item.detectedType === 'RURA' && item.pipeMode === 'meters')) ? (
                             <div>
                               <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ilość sztuk</label>
                               <div className="w-full bg-slate-100 text-slate-400 border border-slate-200 rounded px-2 py-1 text-xs cursor-not-allowed font-medium">
-                                Brak (tylko metry)
+                                Brak (tylko długość)
                               </div>
                             </div>
                           ) : (
@@ -586,7 +748,7 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                   }
 
                   // Standard static item layout
-                  const isBarType = item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI';
+                  const isBarType = item.detectedType === 'PRET_OKRAGLY' || item.detectedType === 'PRET_KWADRATOWY' || item.detectedType === 'PRET_PLASKI' || item.detectedType === 'RURA_OKRAGLA';
 
                   return (
                     <div key={item.id} className={`p-2.5 rounded border text-[11px] text-slate-700 transition-colors flex gap-2 items-start ${
@@ -605,34 +767,88 @@ export default function DrawingUploader({ onAnalysisComplete }: DrawingUploaderP
                       {/* ITEM DETAILS */}
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-slate-900 flex justify-between items-start gap-1">
-                          <span className="truncate">
-                            {idx + 1}. {item.isStandard ? item.standardProfileName : translateType(item.detectedType)}
+                          <span className="truncate flex items-center gap-1">
+                            <span className="font-mono text-slate-400 whitespace-nowrap">{idx + 1}.</span>
+                            <span>
+                              {item.detectedType === 'INNY' 
+                                ? (item.customName || 'Inny element') 
+                                : item.detectedType === 'BLACHA'
+                                  ? `Blacha ${item.h}x${item.width}x${Math.round((item.length || 0) * 1000)} mm`
+                                  : (item.isStandard ? item.standardProfileName : translateType(item.detectedType))}
+                            </span>
                           </span>
                           <span className="text-orange-600 font-mono font-bold shrink-0">
-                            {isBarType ? `${item.length} m` : `${item.quantity} szt.`}
+                            {isBarType
+                              ? (item.lengthUnit === 'mm' ? `${Math.round((item.length || 0) * 1000)} mm` : `${item.length} m`)
+                              : item.detectedType === 'RURA'
+                                ? (item.pipeMode === 'pieces' ? `${item.quantity} szt.` : `${item.length} m`)
+                                : `${item.quantity} szt.`}
                           </span>
                         </div>
 
                         <div className="mt-0.5 text-slate-500 font-mono text-[10px] flex flex-wrap gap-x-2">
-                          <span>Grubość/Wysokość: {item.h} mm</span>
-                          {item.width && <span>Szerokość: {item.width} mm</span>}
-                          {item.webThickness && <span>Ścianka: {item.webThickness} mm</span>}
-                          <span>
-                            Długość: {item.detectedType === 'BLACHA' ? `${Math.round((item.length || 0) * 1000)} mm` : `${item.length} m`}
-                          </span>
+                          {item.detectedType === 'INNY' ? (
+                            <span>Opis: {item.customDimensions || 'Element nieliczony'}</span>
+                          ) : item.detectedType === 'RURA' ? (
+                            <>
+                              <span>Średnica: ∅ {item.h} mm</span>
+                              <span>Typ: {item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykła'}</span>
+                              {item.pipeMode === 'meters' && (
+                                <span>Długość: {item.lengthUnit === 'mm' ? `${Math.round((item.length || 0) * 1000)} mm (${item.length} m)` : `${item.length} m`}</span>
+                              )}
+                            </>
+                          ) : item.detectedType === 'RURA_OKRAGLA' ? (
+                            <>
+                              <span>Średnica: Ø {item.h} mm</span>
+                              <span>Ścianka: {item.webThickness || 3.2} mm</span>
+                              <span>Długość: {item.lengthUnit === 'mm' ? `${Math.round((item.length || 0) * 1000)} mm (${item.length} m)` : `${item.length} m`}</span>
+                            </>
+                          ) : item.detectedType === 'BLACHA' ? (
+                            <>
+                              <span>Grubość: {item.h} mm</span>
+                              {item.width && <span>Szerokość: {item.width} mm</span>}
+                              <span>Długość: {Math.round((item.length || 0) * 1000)} mm</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Wysokość: {item.h} mm</span>
+                              {item.width && <span>Szerokość: {item.width} mm</span>}
+                              {item.webThickness && <span>Ścianka: {item.webThickness} mm</span>}
+                              <span>Długość: {item.lengthUnit === 'mm' ? `${Math.round((item.length || 0) * 1000)} mm (${item.length} m)` : `${item.length} m`}</span>
+                            </>
+                          )}
                         </div>
 
                         {/* LIVE WEIGHT DISPLAY */}
-                        <div className="mt-1 text-slate-800 font-semibold text-[10px] flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded w-fit border border-emerald-100">
-                          <span>Waga:</span>
-                          <span className="text-emerald-700 font-mono">
-                            {liveWeightCalc.totalWeight.toLocaleString('pl-PL', { minimumFractionDigits: 1 })} kg
-                          </span>
-                        </div>
+                        {item.detectedType === 'INNY' ? (
+                          <div className="mt-1 text-slate-500 font-semibold text-[10px] flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded w-fit border border-slate-200">
+                            <span>Waga: nieliczona (0 kg)</span>
+                          </div>
+                        ) : item.detectedType === 'RURA' ? (
+                          <div className="mt-1 text-slate-800 font-semibold text-[10px] flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded w-fit border border-slate-200">
+                            <span>Typ rury:</span>
+                            <span className="text-slate-600 font-medium">
+                              {item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykła'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-slate-800 font-semibold text-[10px] flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded w-fit border border-emerald-100">
+                            <span>Waga:</span>
+                            <span className="text-emerald-700 font-mono">
+                              {liveWeightCalc.totalWeight.toLocaleString('pl-PL', { minimumFractionDigits: 1 })} kg
+                            </span>
+                          </div>
+                        )}
 
                         {item.rawQuantityList && (
                           <div className="text-[9px] text-slate-400 mt-1">
-                            {isBarType ? `Suma odcinków: ${item.rawQuantityList} = ${item.length} m` : `Suma z: ${item.rawQuantityList} = ${item.quantity} szt.`}
+                            {isBarType
+                              ? `Suma odcinków: ${item.rawQuantityList} = ${item.length} m`
+                              : item.detectedType === 'RURA'
+                                ? (item.pipeMode === 'pieces'
+                                  ? `Suma sztuk: ${item.rawQuantityList} = ${item.quantity} szt.`
+                                  : `Suma dł: ${item.rawQuantityList} = ${item.length} m`)
+                                : `Suma z: ${item.rawQuantityList} = ${item.quantity} szt.`}
                           </div>
                         )}
                         {item.originalText && (

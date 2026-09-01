@@ -1,4 +1,4 @@
-export type ShapeType = 'BLACHA' | 'CEOWNIK' | 'DWUTEOWNIK' | 'PRET_OKRAGLY' | 'PRET_KWADRATOWY' | 'PRET_PLASKI' | 'PROFIL_ZAMKNIETY' | 'RURA' | 'KATOWNIK';
+export type ShapeType = 'BLACHA' | 'CEOWNIK' | 'DWUTEOWNIK' | 'PRET_OKRAGLY' | 'PRET_KWADRATOWY' | 'PRET_PLASKI' | 'PROFIL_ZAMKNIETY' | 'RURA' | 'RURA_OKRAGLA' | 'KATOWNIK' | 'INNY';
 
 export type ProfileSystem = 'UNP' | 'UPE' | 'IPE' | 'IPN' | 'HEB' | 'HEA';
 
@@ -30,6 +30,8 @@ export interface CalculationItem {
   pipeMode?: 'pieces' | 'meters';
   pipeType?: 'zwykla' | 'wiertnicza';
   isManualPipe?: boolean;
+  customName?: string; // nazwa/typ elementu dla pozycji nieliczonej (INNY)
+  customDimensions?: string; // wymiary lub opis dla pozycji nieliczonej (INNY)
 }
 
 export interface AnalysisResult {
@@ -56,6 +58,10 @@ export interface AnalyzedItem {
   standardProfileName: string | null;
   webThickness?: number | null;
   originalText?: string; // np. "H6 - 2500x3000 - 1,3,5,8,20,4"
+  pipeMode?: 'pieces' | 'meters';
+  pipeType?: 'zwykla' | 'wiertnicza';
+  customName?: string;
+  customDimensions?: string;
 }
 
 export interface MultiAnalysisResult {

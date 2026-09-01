@@ -24,13 +24,28 @@ export function calculateWeight(params: {
   let finalWebThickness = params.webThickness || 0;
   let finalFlangeThickness = params.flangeThickness || 0;
 
-  if (type === 'RURA') {
+  if (type === 'INNY') {
+    return {
+      unitWeight: 0,
+      totalWeight: 0,
+      webThickness: 0,
+      flangeThickness: 0
+    };
+  } else if (type === 'RURA') {
     return {
       unitWeight: 0,
       totalWeight: 0,
       webThickness: params.webThickness || 0,
       flangeThickness: 0
     };
+  } else if (type === 'RURA_OKRAGLA') {
+    // Rura okrągła (biastal.pl formula): h is outer diameter (mm), webThickness is wall thickness (mm)
+    // Formula: Weight per meter (kg/m) = (D - g) * g * 0.0246615
+    const wall = params.webThickness || 0;
+    const weightPerMeter = (h - wall) * wall * 0.0246615;
+    unitWeight = weightPerMeter * length;
+    finalWebThickness = wall;
+    finalFlangeThickness = 0;
   } else if (type === 'KATOWNIK') {
     // Kątownik g/w (gorącowalcowany): h is height/leg1, width is width/leg2, webThickness is thickness
     const wall = params.webThickness || 3;
