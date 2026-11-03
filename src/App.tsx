@@ -16,15 +16,9 @@ export default function App() {
   // Shape selection
   const [activeTab, setActiveTab] = useState<ShapeType>('BLACHA');
 
-  // Load preferences helper
+  // Load preferences helper - only UNP for CEOWNIK and INP for DWUTEOWNIK
   const getPreferredSystem = (type: 'CEOWNIK' | 'DWUTEOWNIK'): ProfileSystem => {
-    if (type === 'CEOWNIK') {
-      const saved = localStorage.getItem('biastal_pref_ceownik');
-      return (saved as ProfileSystem) || 'UNP';
-    } else {
-      const saved = localStorage.getItem('biastal_pref_dwuteownik');
-      return (saved as ProfileSystem) || 'IPN';
-    }
+    return type === 'CEOWNIK' ? 'UNP' : 'INP';
   };
 
   const mapProfileToPreferredSystem = (
@@ -136,7 +130,7 @@ export default function App() {
         setSelectedProfileName(savedProfile);
       } else {
         const first = STANDARD_IBEAMS.find(p => p.system === prefSys);
-        setSelectedProfileName(first ? first.name : 'IPN 120');
+        setSelectedProfileName(first ? first.name : 'INP 120');
       }
     } else {
       setIsStandard(false); // Plates (BLACHA) are never standard-profiles
@@ -216,7 +210,7 @@ export default function App() {
     } else if (activeTab === 'PRET_KWADRATOWY') {
       specName = `Pręt kw. ■${h}mm`;
     } else if (activeTab === 'PRET_PLASKI') {
-      specName = `Płaskownik ${h}x${width}mm`;
+      specName = `Płaskownik ${Math.max(width, h)}x${Math.min(width, h)}mm`;
     } else if (activeTab === 'RURA_OKRAGLA') {
       specName = `Rura okrągła Ø${h}x${webThickness || 3.2}mm`;
     } else if (activeTab === 'PROFIL_ZAMKNIETY') {
@@ -362,7 +356,7 @@ export default function App() {
                   : aiItem.detectedType === 'PRET_KWADRATOWY'
                     ? `Pręt kw. ■${finalH}mm`
                     : aiItem.detectedType === 'PRET_PLASKI'
-                      ? `Płaskownik ${finalH}x${finalWidth}mm`
+                      ? `Płaskownik ${Math.max(finalWidth, finalH)}x${Math.min(finalWidth, finalH)}mm`
                       : aiItem.detectedType === 'PROFIL_ZAMKNIETY'
                         ? `Profil zamk. ${finalH}x${finalWidth}x${aiItem.webThickness || 2}mm`
                         : `Geom. (${finalH}x${finalWidth}x${Math.round(lengthInMeters * 1000)}mm)`;
@@ -499,25 +493,30 @@ export default function App() {
       </AnimatePresence>
 
       {/* MAIN LAYOUT */}
-      <main className="flex-1 max-w-[1440px] w-full mx-auto p-6 flex flex-col xl:flex-row gap-6 items-start">
+      <main className="flex-1 max-w-[1800px] w-full mx-auto p-6 flex flex-col xl:flex-row gap-6 items-start">
         
-        {/* COLUMN 1: SIDEBAR (MATERIAL SELECTION & AI SCANNER) */}
-        <aside className="w-full xl:w-72 shrink-0 flex flex-col gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Typ Elementu</h3>
-            <div className="space-y-2">
+        {/* COLUMN 1: SIDEBAR (MATERIAL SELECTION & AI SCANNER - EQUAL 540PX WIDTH TO CALCULATION LIST) */}
+        <aside className="w-full xl:w-[540px] shrink-0 flex flex-col gap-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Wybór Wyrobu Hutniczego
+              </h3>
+              <span className="text-[10px] text-slate-400 font-mono">11 rodzajów stali</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button
                 onClick={() => {
                   setActiveTab('BLACHA');
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'BLACHA'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Blacha Stalowa</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Blacha Stalowa</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'BLACHA' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>PLT</span>
               </button>
@@ -526,14 +525,14 @@ export default function App() {
                 onClick={() => {
                   setActiveTab('CEOWNIK');
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'CEOWNIK'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Ceownik g/w</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Ceownik g/w</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'CEOWNIK' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>UPN</span>
               </button>
@@ -542,14 +541,14 @@ export default function App() {
                 onClick={() => {
                   setActiveTab('DWUTEOWNIK');
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'DWUTEOWNIK'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Dwuteownik</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Dwuteownik</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'DWUTEOWNIK' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>HEA/HEB</span>
               </button>
@@ -559,14 +558,14 @@ export default function App() {
                   setActiveTab('PRET_OKRAGLY');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'PRET_OKRAGLY'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Pręt okrągły gładki</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Pręt okrągły</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'PRET_OKRAGLY' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>Ø</span>
               </button>
@@ -576,14 +575,14 @@ export default function App() {
                   setActiveTab('PRET_KWADRATOWY');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'PRET_KWADRATOWY'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Pręt kwadratowy</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Pręt kwadratowy</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'PRET_KWADRATOWY' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>■</span>
               </button>
@@ -593,14 +592,14 @@ export default function App() {
                   setActiveTab('PRET_PLASKI');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'PRET_PLASKI'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Pręt płaski</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Pręt płaski</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'PRET_PLASKI' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>PL</span>
               </button>
@@ -610,14 +609,14 @@ export default function App() {
                   setActiveTab('PROFIL_ZAMKNIETY');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'PROFIL_ZAMKNIETY'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Profil zamknięty</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Profil zamknięty</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'PROFIL_ZAMKNIETY' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>BOX</span>
               </button>
@@ -627,14 +626,14 @@ export default function App() {
                   setActiveTab('RURA');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'RURA'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Rura</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Rura</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'RURA' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>R fi</span>
               </button>
@@ -644,14 +643,14 @@ export default function App() {
                   setActiveTab('RURA_OKRAGLA');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'RURA_OKRAGLA'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Rura okrągła</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Rura okrągła</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'RURA_OKRAGLA' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>RO</span>
               </button>
@@ -661,14 +660,14 @@ export default function App() {
                   setActiveTab('KATOWNIK');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'KATOWNIK'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Kątownik (L)</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Kątownik (L)</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'KATOWNIK' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>L</span>
               </button>
@@ -678,14 +677,14 @@ export default function App() {
                   setActiveTab('INNY');
                   setIsStandard(false);
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-between p-2.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'INNY'
                     ? 'bg-slate-900 text-white border-l-4 border-orange-500 font-semibold shadow-md'
-                    : 'hover:bg-slate-100 text-slate-600 font-medium'
+                    : 'hover:bg-slate-100 text-slate-600 font-medium bg-slate-50 border border-slate-200'
                 }`}
               >
-                <span>Inne</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
+                <span className="text-xs truncate">Inne</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                   activeTab === 'INNY' ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-500'
                 }`}>INNY</span>
               </button>
@@ -764,17 +763,9 @@ export default function App() {
                     className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 cursor-pointer"
                   >
                     {activeTab === 'CEOWNIK' ? (
-                      <>
-                        <option value="UNP">UNP (Standard U-channel)</option>
-                        <option value="UPE">UPE (Parallel flange U-channel)</option>
-                      </>
+                      <option value="UNP">UNP (Ceownik standardowy)</option>
                     ) : (
-                      <>
-                        <option value="IPN">IPN (Standard European I-beam)</option>
-                        <option value="IPE">IPE (Narrow flange I-beam)</option>
-                        <option value="HEB">HEB (Wide flange, heavy)</option>
-                        <option value="HEA">HEA (Wide flange, light)</option>
-                      </>
+                      <option value="INP">INP (Dwuteownik standardowy)</option>
                     )}
                   </select>
                 </div>
@@ -811,6 +802,34 @@ export default function App() {
               
               {activeTab === 'INNY' ? (
                 <div className="space-y-4">
+                  {/* Preset Quick Chips */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Szybki wybór pozycji nieliczonej:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'Blacha łezkowa (bl łezka)', value: 'Blacha łezkowa' },
+                        { label: 'Holimodel (holi)', value: 'Holimodel' },
+                        { label: 'Hardox', value: 'Hardox' },
+                        { label: 'Zaślepka PVC', value: 'Zaślepka PVC' },
+                      ].map(preset => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setCustomName(preset.value)}
+                          className={`text-xs px-2.5 py-1 rounded-md border font-medium transition-colors cursor-pointer ${
+                            customName === preset.value
+                              ? 'bg-orange-500 text-white border-orange-600 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       Nazwa elementu
@@ -819,7 +838,7 @@ export default function App() {
                       type="text"
                       value={customName}
                       onChange={(e) => setCustomName(e.target.value)}
-                      placeholder="np. Zaślepka PVC, Uchwyt, Kołek..."
+                      placeholder="np. Blacha łezkowa, Holimodel, Hardox, Zaślepka..."
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-base font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
                     />
                   </div>
@@ -833,7 +852,7 @@ export default function App() {
                         type="text"
                         value={customDimensions}
                         onChange={(e) => setCustomDimensions(e.target.value)}
-                        placeholder="np. fi 50 / 2 szt."
+                        placeholder="np. 2000x1000 lub gr. 4 / M16"
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-base font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
                       />
                     </div>
@@ -852,6 +871,10 @@ export default function App() {
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all text-slate-800 hover:border-slate-300"
                       />
                     </div>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-100/80 rounded-lg text-slate-600 text-xs border border-slate-200/80">
+                    💡 Pozycje nieliczone (0 kg): <span className="font-semibold text-slate-800">Blacha łezkowa (bl łezka)</span>, <span className="font-semibold text-slate-800">holimodel (holi)</span>, <span className="font-semibold text-slate-800">hardox</span> oraz drobne akcesoria montażowe. Standardowe blachy stalowe (np. 2000x2000) dodawaj w zakładce <span className="font-semibold text-orange-600">Blacha</span> z obliczaną wagą.
                   </div>
                 </div>
               ) : (

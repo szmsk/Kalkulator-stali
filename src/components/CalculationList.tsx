@@ -100,14 +100,13 @@ export default function CalculationList({
           setEditProfileName(first ? first.name : 'UNP 80');
         }
       } else if (item.type === 'DWUTEOWNIK') {
-        const savedSys = localStorage.getItem('biastal_pref_dwuteownik') as ProfileSystem || 'IPN';
-        setEditProfileSystem(savedSys);
-        const savedProfile = localStorage.getItem(`biastal_pref_profile_name_${savedSys}`);
+        setEditProfileSystem('INP');
+        const savedProfile = localStorage.getItem('biastal_pref_profile_name_INP');
         if (savedProfile && findStandardProfile(savedProfile)) {
           setEditProfileName(savedProfile);
         } else {
-          const first = STANDARD_IBEAMS.find(p => p.system === savedSys);
-          setEditProfileName(first ? first.name : 'IPN 120');
+          const first = STANDARD_IBEAMS.find(p => p.system === 'INP');
+          setEditProfileName(first ? first.name : 'INP 120');
         }
       }
     }
@@ -152,23 +151,12 @@ export default function CalculationList({
     } else {
       if (editLength >= 100) setEditLength(6.0);
       if (newType === 'CEOWNIK' || newType === 'DWUTEOWNIK') {
-        const sys = newType === 'CEOWNIK'
-          ? (localStorage.getItem('biastal_pref_ceownik') as ProfileSystem || 'UNP')
-          : (localStorage.getItem('biastal_pref_dwuteownik') as ProfileSystem || 'IPN');
+        const sys: ProfileSystem = newType === 'CEOWNIK' ? 'UNP' : 'INP';
         setEditProfileSystem(sys);
-        const savedProfile = localStorage.getItem(`biastal_pref_profile_name_${sys}`);
-        if (savedProfile && findStandardProfile(savedProfile)) {
-          setEditProfileName(savedProfile);
-        } else {
-          const first = newType === 'CEOWNIK' 
-            ? STANDARD_CHANNELS.find(p => p.system === sys)
-            : STANDARD_IBEAMS.find(p => p.system === sys);
-          if (first) {
-            setEditProfileName(first.name);
-          } else {
-            setEditProfileName(newType === 'CEOWNIK' ? 'UNP 80' : 'IPN 120');
-          }
-        }
+        const first = newType === 'CEOWNIK' 
+          ? STANDARD_CHANNELS.find(p => p.system === 'UNP')
+          : STANDARD_IBEAMS.find(p => p.system === 'INP');
+        setEditProfileName(first ? first.name : (newType === 'CEOWNIK' ? 'UNP 80' : 'INP 120'));
       } else {
         setEditIsStandard(false);
       }
@@ -211,7 +199,7 @@ export default function CalculationList({
     } else if (editType === 'PRET_KWADRATOWY') {
       specName = `Pręt kw. ■${editH}mm`;
     } else if (editType === 'PRET_PLASKI') {
-      specName = `Płaskownik ${editH}x${editWidth}mm`;
+      specName = `Płaskownik ${Math.max(editWidth, editH)}x${Math.min(editWidth, editH)}mm`;
     } else if (editType === 'RURA_OKRAGLA') {
       specName = `Rura okrągła Ø${editH}x${editWebThickness || 3.2}mm`;
     } else if (editType === 'RURA') {
@@ -366,7 +354,7 @@ export default function CalculationList({
                           </>
                         ) : item.type === 'PRET_PLASKI' ? (
                           <>
-                            <div>Grubość: {item.h} mm | Szerokość: {item.width} mm</div>
+                            <div>Wymiar: {Math.max(item.width, item.h)}x{Math.min(item.width, item.h)} mm</div>
                             <div>Długość: {item.length} m</div>
                           </>
                         ) : item.type === 'RURA_OKRAGLA' ? (
@@ -615,13 +603,38 @@ export default function CalculationList({
                 <div className="space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Szybki wybór pozycji nieliczonej:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {[
+                        { label: 'Blacha łezkowa (bl łezka)', value: 'Blacha łezkowa' },
+                        { label: 'Holimodel (holi)', value: 'Holimodel' },
+                        { label: 'Hardox', value: 'Hardox' },
+                        { label: 'Zaślepka PVC', value: 'Zaślepka PVC' },
+                      ].map(preset => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setEditCustomName(preset.value)}
+                          className={`text-[11px] px-2 py-0.5 rounded border font-medium transition-colors cursor-pointer ${
+                            editCustomName === preset.value
+                              ? 'bg-orange-500 text-white border-orange-600 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Nazwa elementu
                     </label>
                     <input
                       type="text"
                       value={editCustomName}
                       onChange={(e) => setEditCustomName(e.target.value)}
-                      placeholder="np. Zaślepka PVC, Uchwyt"
+                      placeholder="np. Blacha łezkowa, Holimodel, Hardox, Zaślepka PVC"
                       className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
                     />
                   </div>
@@ -633,9 +646,12 @@ export default function CalculationList({
                       type="text"
                       value={editCustomDimensions}
                       onChange={(e) => setEditCustomDimensions(e.target.value)}
-                      placeholder="np. fi 50 / 2 szt."
+                      placeholder="np. 2000x1000 lub gr. 4 / M16"
                       className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
                     />
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    💡 Pozycja nieliczona (0 kg). Waga całkowita nie będzie powiększana o ten element.
                   </div>
                 </div>
               )}
@@ -688,17 +704,9 @@ export default function CalculationList({
                       className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
                     >
                       {editType === 'CEOWNIK' ? (
-                        <>
-                          <option value="UNP">UNP (Standard U-channel)</option>
-                          <option value="UPE">UPE (Parallel flange U-channel)</option>
-                        </>
+                        <option value="UNP">UNP (Ceownik standardowy)</option>
                       ) : (
-                        <>
-                          <option value="IPN">IPN (Standard European I-beam)</option>
-                          <option value="IPE">IPE (Narrow flange I-beam)</option>
-                          <option value="HEB">HEB (Wide flange, heavy)</option>
-                          <option value="HEA">HEA (Wide flange, light)</option>
-                        </>
+                        <option value="INP">INP (Dwuteownik standardowy)</option>
                       )}
                     </select>
                   </div>
