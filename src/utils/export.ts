@@ -40,10 +40,7 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
     } else if (item.type === 'RURA_OKRAGLA') {
       dimensionsStr = `Fi ${item.h} mm, Długość: ${item.length} m`;
     } else if (item.type === 'RURA') {
-      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKŁA';
-      dimensionsStr = item.pipeMode === 'pieces'
-        ? `Fi ${item.h} mm [${pTypeLabel}], Ilość: ${item.quantity} szt.`
-        : `Fi ${item.h} mm [${pTypeLabel}], Długość: ${item.length} m`;
+      dimensionsStr = `Średnica fi ${item.h} mm`;
     } else if (item.type === 'KATOWNIK') {
       dimensionsStr = `Kątownik L: ${item.h}x${item.width}x${item.webThickness || 3} mm, Długość: ${item.length} m`;
     } else if (item.type === 'PRET_PLASKI') {
@@ -62,8 +59,8 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
 
     return {
       'Lp.': index + 1,
-      'Typ elementu': item.type === 'INNY' ? (item.customName || 'Inne') : item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : item.type === 'RURA_OKRAGLA' ? 'Rura okrągła' : item.type === 'RURA' ? (item.pipeType === 'wiertnicza' ? 'Rura WIERTNICZA' : 'Rura ZWYKŁA') : item.type === 'KATOWNIK' ? 'Kątownik' : 'Profil zamknięty',
-      'Profil': item.type === 'INNY' ? '' : item.type === 'PRET_PLASKI' ? `${Math.max(item.width, item.h)}x${Math.min(item.width, item.h)}` : item.isStandard ? (item.profileName || 'Standardowy') : (item.type === 'RURA_OKRAGLA' ? `Fi ${item.h}x${item.webThickness || 3.2} mm` : item.type === 'RURA' ? `Fi ${item.h} mm [${item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKŁA'}]` : item.type === 'KATOWNIK' ? 'Niestandardowy (Kątownik)' : 'Niestandardowy (Geom.)'),
+      'Typ elementu': item.type === 'INNY' ? (item.customName || 'Inne') : item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : item.type === 'RURA_OKRAGLA' ? 'Rura okrągła' : item.type === 'RURA' ? (item.pipeType === 'wiertnicza' ? 'Rura wiertnicza' : 'Rura zwykła') : item.type === 'KATOWNIK' ? 'Kątownik' : 'Profil zamknięty',
+      'Profil': item.type === 'INNY' ? '' : item.type === 'PRET_PLASKI' ? `${Math.max(item.width, item.h)}x${Math.min(item.width, item.h)}` : item.isStandard ? (item.profileName || 'Standardowy') : (item.type === 'RURA_OKRAGLA' ? `Fi ${item.h}x${item.webThickness || 3.2} mm` : item.type === 'RURA' ? `Fi ${item.h} mm` : item.type === 'KATOWNIK' ? 'Niestandardowy (Kątownik)' : 'Niestandardowy (Geom.)'),
       'Wymiary podstawowe': dimensionsStr,
       'Grubości ścianek': wallThicknessStr,
       'Ilość': item.type === 'INNY' ? `${item.quantity} szt.` : item.type === 'BLACHA' 
@@ -169,7 +166,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
                       item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : 
                       item.type === 'PRET_PLASKI' ? 'Pręt płaski' : 
                       item.type === 'RURA_OKRAGLA' ? 'Rura okrągła' :
-                      item.type === 'RURA' ? (item.pipeType === 'wiertnicza' ? 'RURA WIERTNICZA' : 'RURA ZWYKLA') : 
+                      item.type === 'RURA' ? (item.pipeType === 'wiertnicza' ? 'Rura wiertnicza' : 'Rura zwykła') : 
                       item.type === 'KATOWNIK' ? 'Kątownik' :
                       'Profil zamknięty';
 
@@ -182,8 +179,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     } else if (item.type === 'RURA_OKRAGLA') {
       profileLabel = `Fi ${item.h}x${item.webThickness || 3.2} mm`;
     } else if (item.type === 'RURA') {
-      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKLA';
-      profileLabel = `Fi ${item.h} mm [${pTypeLabel}]`;
+      profileLabel = `Fi ${item.h} mm`;
     } else if (item.type === 'KATOWNIK') {
       profileLabel = `L ${item.h}x${item.width} mm`;
     } else if (item.type === 'PRET_KWADRATOWY') {
@@ -207,10 +203,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     } else if (item.type === 'RURA_OKRAGLA') {
       dimLabel = `Fi ${item.h} mm, Dl: ${item.length.toFixed(2)} m`;
     } else if (item.type === 'RURA') {
-      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKLA';
-      dimLabel = item.pipeMode === 'pieces'
-        ? `Srednica fi ${item.h} mm | ${pTypeLabel} (${item.quantity} szt.)`
-        : `Srednica fi ${item.h} mm | ${pTypeLabel} (${item.length.toFixed(2)} m)`;
+      dimLabel = `Srednica fi ${item.h} mm`;
     } else if (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY') {
       dimLabel = `Dlugosc: ${item.length.toFixed(2)} m`;
     } else if (item.type === 'PRET_PLASKI') {
