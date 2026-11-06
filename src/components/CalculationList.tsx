@@ -321,7 +321,7 @@ export default function CalculationList({
                     item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' :
                     item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' :
                     item.type === 'RURA_OKRAGLA' ? 'Rura okrągła' :
-                    item.type === 'RURA' ? 'Rura' :
+                    item.type === 'RURA' ? (item.pipeType === 'wiertnicza' ? 'Rura Wiertnicza' : 'Rura Zwykła') :
                     item.type === 'KATOWNIK' ? 'Kątownik' :
                     item.type === 'INNY' ? 'Inne' :
                     'Profil zamknięty';

@@ -7,9 +7,10 @@ import { CalculationItem } from '../types';
 function stripDiacritics(str: string): string {
   const map: { [key: string]: string } = {
     'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
-    'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z'
+    'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z',
+    '∅': 'Fi ', 'Ø': 'Fi '
   };
-  return str.replace(/[ąćęłnósźżĄĆĘŁNÓŚŹŻ]/g, match => map[match] || match);
+  return str.replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ∅Ø]/g, match => map[match] || match);
 }
 
 /**
@@ -37,12 +38,12 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
     } else if (item.type === 'BLACHA') {
       dimensionsStr = `Grubość: ${item.h} mm, Szerokość: ${item.width} mm, Długość: ${Math.round(item.length * 1000)} mm`;
     } else if (item.type === 'RURA_OKRAGLA') {
-      dimensionsStr = `∅ ${item.h} mm, Długość: ${item.length} m`;
+      dimensionsStr = `Fi ${item.h} mm, Długość: ${item.length} m`;
     } else if (item.type === 'RURA') {
-      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'wiertnicza' : 'zwykła';
+      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKŁA';
       dimensionsStr = item.pipeMode === 'pieces'
-        ? `∅ ${item.h} mm (${pTypeLabel}), Ilość: ${item.quantity} szt.`
-        : `∅ ${item.h} mm (${pTypeLabel}), Długość: ${item.length} m`;
+        ? `Fi ${item.h} mm [${pTypeLabel}], Ilość: ${item.quantity} szt.`
+        : `Fi ${item.h} mm [${pTypeLabel}], Długość: ${item.length} m`;
     } else if (item.type === 'KATOWNIK') {
       dimensionsStr = `Kątownik L: ${item.h}x${item.width}x${item.webThickness || 3} mm, Długość: ${item.length} m`;
     } else if (item.type === 'PRET_PLASKI') {
@@ -56,13 +57,13 @@ export function exportToExcel(items: CalculationItem[], totalWeight: number): vo
       : (item.type === 'KATOWNIK' || item.type === 'RURA_OKRAGLA')
         ? `Ścianka: ${item.webThickness || (item.type === 'RURA_OKRAGLA' ? 3.2 : 3)} mm`
         : item.type === 'RURA'
-          ? `Typ: ${item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykła'}`
+          ? ''
           : 'N/A';
 
     return {
       'Lp.': index + 1,
-      'Typ elementu': item.type === 'INNY' ? (item.customName || 'Inne') : item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : item.type === 'RURA_OKRAGLA' ? 'Rura okrągła' : item.type === 'RURA' ? 'Rura' : item.type === 'KATOWNIK' ? 'Kątownik' : 'Profil zamknięty',
-      'Profil': item.type === 'INNY' ? '' : item.type === 'PRET_PLASKI' ? `${Math.max(item.width, item.h)}x${Math.min(item.width, item.h)}` : item.isStandard ? (item.profileName || 'Standardowy') : (item.type === 'RURA_OKRAGLA' ? `Ø ${item.h}x${item.webThickness || 3.2} mm` : item.type === 'RURA' ? 'Niestandardowy (Rura)' : item.type === 'KATOWNIK' ? 'Niestandardowy (Kątownik)' : 'Niestandardowy (Geom.)'),
+      'Typ elementu': item.type === 'INNY' ? (item.customName || 'Inne') : item.type === 'BLACHA' ? 'Blacha' : item.type === 'CEOWNIK' ? 'Ceownik g/w' : item.type === 'DWUTEOWNIK' ? 'Dwuteownik' : item.type === 'PRET_OKRAGLY' ? 'Pręt okrągły gładki' : item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : item.type === 'PRET_PLASKI' ? 'Pręt płaski / Płaskownik' : item.type === 'RURA_OKRAGLA' ? 'Rura okrągła' : item.type === 'RURA' ? (item.pipeType === 'wiertnicza' ? 'Rura WIERTNICZA' : 'Rura ZWYKŁA') : item.type === 'KATOWNIK' ? 'Kątownik' : 'Profil zamknięty',
+      'Profil': item.type === 'INNY' ? '' : item.type === 'PRET_PLASKI' ? `${Math.max(item.width, item.h)}x${Math.min(item.width, item.h)}` : item.isStandard ? (item.profileName || 'Standardowy') : (item.type === 'RURA_OKRAGLA' ? `Fi ${item.h}x${item.webThickness || 3.2} mm` : item.type === 'RURA' ? `Fi ${item.h} mm [${item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKŁA'}]` : item.type === 'KATOWNIK' ? 'Niestandardowy (Kątownik)' : 'Niestandardowy (Geom.)'),
       'Wymiary podstawowe': dimensionsStr,
       'Grubości ścianek': wallThicknessStr,
       'Ilość': item.type === 'INNY' ? `${item.quantity} szt.` : item.type === 'BLACHA' 
@@ -168,7 +169,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
                       item.type === 'PRET_KWADRATOWY' ? 'Pręt kwadratowy' : 
                       item.type === 'PRET_PLASKI' ? 'Pręt płaski' : 
                       item.type === 'RURA_OKRAGLA' ? 'Rura okrągła' :
-                      item.type === 'RURA' ? 'Rura' : 
+                      item.type === 'RURA' ? (item.pipeType === 'wiertnicza' ? 'RURA WIERTNICZA' : 'RURA ZWYKLA') : 
                       item.type === 'KATOWNIK' ? 'Kątownik' :
                       'Profil zamknięty';
 
@@ -177,12 +178,12 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     if (item.type === 'INNY') {
       profileLabel = '';
     } else if (item.type === 'PRET_OKRAGLY') {
-      profileLabel = `∅ ${item.h} mm`;
+      profileLabel = `Fi ${item.h} mm`;
     } else if (item.type === 'RURA_OKRAGLA') {
-      profileLabel = `∅ ${item.h}x${item.webThickness || 3.2} mm`;
+      profileLabel = `Fi ${item.h}x${item.webThickness || 3.2} mm`;
     } else if (item.type === 'RURA') {
-      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykla';
-      profileLabel = `∅ ${item.h} mm (${pTypeLabel})`;
+      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKLA';
+      profileLabel = `Fi ${item.h} mm [${pTypeLabel}]`;
     } else if (item.type === 'KATOWNIK') {
       profileLabel = `L ${item.h}x${item.width} mm`;
     } else if (item.type === 'PRET_KWADRATOWY') {
@@ -204,11 +205,12 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     } else if (item.type === 'BLACHA') {
       dimLabel = `${item.h} x ${item.width} x ${Math.round(item.length * 1000)} mm`;
     } else if (item.type === 'RURA_OKRAGLA') {
-      dimLabel = `∅ ${item.h} mm, Dl: ${item.length.toFixed(2)} m`;
+      dimLabel = `Fi ${item.h} mm, Dl: ${item.length.toFixed(2)} m`;
     } else if (item.type === 'RURA') {
+      const pTypeLabel = item.pipeType === 'wiertnicza' ? 'WIERTNICZA' : 'ZWYKLA';
       dimLabel = item.pipeMode === 'pieces'
-        ? `Sztuki: ${item.quantity} szt.`
-        : `Dlugosc: ${item.length.toFixed(2)} m`;
+        ? `Srednica fi ${item.h} mm | ${pTypeLabel} (${item.quantity} szt.)`
+        : `Srednica fi ${item.h} mm | ${pTypeLabel} (${item.length.toFixed(2)} m)`;
     } else if (item.type === 'PRET_OKRAGLY' || item.type === 'PRET_KWADRATOWY') {
       dimLabel = `Dlugosc: ${item.length.toFixed(2)} m`;
     } else if (item.type === 'PRET_PLASKI') {
@@ -222,7 +224,7 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
     if (item.type === 'PROFIL_ZAMKNIETY' || item.type === 'KATOWNIK' || item.type === 'RURA_OKRAGLA') {
       thickLabel = `Scianka: ${item.webThickness || (item.type === 'RURA_OKRAGLA' ? 3.2 : (item.type === 'KATOWNIK' ? 3 : 2))} mm`;
     } else if (item.type === 'RURA') {
-      thickLabel = `Typ: ${item.pipeType === 'wiertnicza' ? 'Wiertnicza' : 'Zwykla'}`;
+      thickLabel = '';
     } else if (item.type !== 'BLACHA' && item.type !== 'PRET_OKRAGLY' && item.type !== 'PRET_KWADRATOWY' && item.type !== 'PRET_PLASKI' && item.type !== 'INNY') {
       thickLabel = `${item.webThickness || '-'} / ${item.flangeThickness || '-'} mm`;
     }
@@ -284,25 +286,30 @@ export function exportToPDF(items: CalculationItem[], totalWeight: number): void
       fontStyle: 'bold'
     },
     columnStyles: {
-      0: { cellWidth: 14, halign: 'center' },
-      1: { cellWidth: 30 },
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 35 },
       2: { cellWidth: 42 },
-      3: { cellWidth: 64 },
-      4: { cellWidth: 38 },
+      3: { cellWidth: 62 },
+      4: { cellWidth: 33 },
       5: { cellWidth: 26 },
       6: { cellWidth: 24 },
       7: { cellWidth: 29, fontStyle: 'bold' }
     },
     didParseCell: (data) => {
+      // Do not alter styles for header or footer sections
+      if (data.section !== 'body') {
+        return;
+      }
+
       // Highlight the totals row
       if (data.row.index === tableRows.length - 1) {
         data.cell.styles.fillColor = [220, 252, 231]; // Green-100
         data.cell.styles.textColor = [21, 128, 61]; // Green-700
       } else {
         const item = items[data.row.index];
-        // Highlight Rura and INNY rows with orange color (Orange-100 background, Orange-700 text)
+        // Highlight RURA (both wiertnicza and zwykla) and INNY rows in the exact same orange color
         if (item && (item.type === 'RURA' || item.type === 'INNY')) {
-          data.cell.styles.fillColor = [255, 237, 213]; // Orange-100 / Amber-100
+          data.cell.styles.fillColor = [255, 237, 213]; // Orange-100
           data.cell.styles.textColor = [194, 65, 12]; // Orange-700
         }
       }
